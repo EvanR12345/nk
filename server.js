@@ -10,12 +10,24 @@ const DEFAULT_DATA_FILE = path.join(ROOT, "data", "leaderboard.json");
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_USERS = 10000;
 
-function cleanUser(value) {
+function normalizeWholeNumber(value) {
+  if(typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    return BigInt(Math.floor(value)).toString();
+  }
+  const text = String(value ?? "0").trim();
+  if(!/^\d+$/.test(text)) return "0";
+  return text.replace(/^0+(?=\d)/, "");
+}
+
+const normalizeExponentLevel = normalizeWholeNumber;
+
+function cleanUser(value, name) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const upgrades = value.upgrades && typeof value.upgrades === "object" ? value.upgrades : {};
   const achievements = value.achievements && typeof value.achievements === "object" ? value.achievements : {};
-  const count = Math.max(0, Number(value.count) || 0);
-  const lifetime = Math.max(count, Number(value.lifetime) || count);
+  const count = normalizeWholeNumber(value.count);
+  const suppliedLifetime = normalizeWholeNumber(value.lifetime ?? count);
+  const lifetime = BigInt(suppliedLifetime) >= BigInt(count) ? suppliedLifetime : count;
 
   return {
     count,
@@ -28,12 +40,15 @@ function cleanUser(value) {
       power: Math.min(100, Math.max(1, Number(upgrades.power) || 1)),
       burst: Math.min(100, Math.max(1, Number(upgrades.burst) || 1)),
       combo: Math.min(100, Math.max(1, Number(upgrades.combo) || 1)),
-      auto: Math.min(100, Math.max(0, Number(upgrades.auto) || 0))
+      auto: Math.min(100, Math.max(0, Number(upgrades.auto) || 0)),
+      exponent: name === "jjh" ? normalizeExponentLevel(upgrades.exponent) : "0"
     },
     achievements: Object.fromEntries(
       Object.entries(achievements).slice(0, 100).map(([key, unlockedAt]) => [String(key).slice(0, 40), Number(unlockedAt) || Date.now()])
     ),
-    theme: ["neon", "fire", "ice", "toxic"].includes(value.theme) ? value.theme : "neon"
+    theme: ["neon", "fire", "ice", "toxic"].includes(value.theme) ? value.theme : "neon",
+    notation: value.notation === "scientific" ? "scientific" : "standard",
+    hideLevels: value.hideLevels === true
   };
 }
 
@@ -111,7 +126,7 @@ function createServer(options = {}) {
       if (url.pathname.startsWith("/api/leaderboard/") && req.method === "PUT") {
         const name = decodeURIComponent(url.pathname.slice("/api/leaderboard/".length));
         if (!validUsername(name)) return json(res, 400, { error: "Invalid username" });
-        const user = cleanUser(await readBody(req));
+        const user = cleanUser(await readBody(req), name);
         if (!user) return json(res, 400, { error: "Invalid user data" });
         return json(res, 200, await store.put(name, user));
       }
