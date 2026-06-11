@@ -477,10 +477,11 @@
       transition:.15s;
     }
 
-    .tiny-btn:hover{
+    .tiny-btn:hover,
+    .tiny-btn.active{
       color:white;
       border-color:color-mix(in srgb, var(--main) 55%, transparent);
-      background:rgba(255,255,255,.075);
+      background:color-mix(in srgb, var(--main) 16%, transparent);
     }
 
     .quip-box{
@@ -706,6 +707,30 @@
       cursor:not-allowed;
       opacity:.42;
       filter:grayscale(.35);
+    }
+
+    .setting-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      border:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.04);
+      border-radius:15px;
+      padding:11px;
+      margin-top:10px;
+    }
+
+    .setting-row strong{
+      display:block;
+      font-size:.86rem;
+    }
+
+    .setting-row span{
+      display:block;
+      margin-top:3px;
+      color:rgba(255,255,255,.36);
+      font-size:.72rem;
     }
 
     .ach{
@@ -962,6 +987,23 @@
             <button class="buy" id="buyAuto"></button>
           </div>
 
+          <div class="upgrade hidden" id="exponentUpgrade">
+            <div>
+              <h3>🧪 Exponentiation <span id="exponentLevel"></span></h3>
+              <p>Secret jjh tech: raises click power to a higher exponent.</p>
+            </div>
+            <button class="buy" id="buyExponent"></button>
+          </div>
+
+          <div class="section-title" style="margin-top:18px">⚙️ Settings <span>display</span></div>
+          <div class="setting-row">
+            <div>
+              <strong>Scientific notation</strong>
+              <span>Show numbers like 1.23e+05.</span>
+            </div>
+            <button class="tiny-btn" id="notationBtn">off</button>
+          </div>
+
           <div class="section-title" style="margin-top:18px">🎨 Themes <span id="themeLabel">neon</span></div>
           <div class="theme-row">
             <button class="theme active" data-theme="neon">Neon</button>
@@ -1035,6 +1077,7 @@
     const KEY = "neekelijah_html_upgraded_v3";
     const LEGACY_KEY = "neekelijah_html_upgraded_v2";
     const MAX_LEVEL = 100;
+    const MAX_EXPONENT_LEVEL = 5;
     const MAX_WORLD = 100;
     const LEADERBOARD_API = "/api/leaderboard";
 
@@ -1104,9 +1147,10 @@
       bestCombo:0,
       createdAt:Date.now(),
       lastSeen:Date.now(),
-      upgrades:{ power:1, burst:1, combo:1, auto:0 },
+      upgrades:{ power:1, burst:1, combo:1, auto:0, exponent:0 },
       achievements:{},
-      theme:"neon"
+      theme:"neon",
+      notation:"standard"
     });
 
     let state = {
@@ -1135,16 +1179,33 @@
       return i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
     }
 
+    function isSecretUser(name=state.me){
+      return name === "jjh";
+    }
+
+    function scientific(n){
+      const [coefficient, exponent="+0"] = Number(n || 0).toExponential(2).split("e");
+      const sign = exponent.startsWith("-") ? "-" : "+";
+      return `${coefficient}e${sign}${exponent.replace(/[+-]/, "").padStart(2, "0")}`;
+    }
+
     function compact(n){
-      return Number(n || 0).toLocaleString();
+      const user = state.me && state.users[state.me];
+      return user && user.notation === "scientific"
+        ? scientific(n)
+        : Number(n || 0).toLocaleString();
+    }
+
+    function upgradeMax(type){
+      return type === "exponent" ? MAX_EXPONENT_LEVEL : MAX_LEVEL;
     }
 
     function getCost(type){
       const u = currentUser();
       const level = u.upgrades[type] || 0;
-      const bases = { power:45, burst:70, combo:95, auto:220 };
-      const growth = { power:1.16, burst:1.15, combo:1.165, auto:1.18 };
-      return Math.floor(bases[type] * Math.pow(growth[type], Math.max(0, level - (type === "auto" ? 0 : 1))));
+      const bases = { power:45, burst:70, combo:95, auto:220, exponent:100000 };
+      const growth = { power:1.16, burst:1.15, combo:1.165, auto:1.18, exponent:25 };
+      return Math.floor(bases[type] * Math.pow(growth[type], Math.max(0, level - (["auto","exponent"].includes(type) ? 0 : 1))));
     }
 
     function worldRequirement(world){
@@ -1179,7 +1240,7 @@
       return state.users[state.me];
     }
 
-    function normalizeUser(user){
+    function normalizeUser(user, name=state.me){
       if(typeof user === "number"){
         return user;
       }
@@ -1194,8 +1255,10 @@
       user.upgrades.burst = Math.min(MAX_LEVEL, Math.max(1, Number(user.upgrades.burst || 1)));
       user.upgrades.combo = Math.min(MAX_LEVEL, Math.max(1, Number(user.upgrades.combo || 1)));
       user.upgrades.auto = Math.min(MAX_LEVEL, Math.max(0, Number(user.upgrades.auto || 0)));
+      user.upgrades.exponent = isSecretUser(name) ? Math.min(MAX_EXPONENT_LEVEL, Math.max(0, Number(user.upgrades.exponent || 0))) : 0;
       user.achievements = user.achievements || {};
       user.theme = user.theme || "neon";
+      user.notation = user.notation === "scientific" ? "scientific" : "standard";
     }
 
     function normalizeAll(obj){
@@ -1206,7 +1269,7 @@
           u.count = value;
           fixed[name] = u;
         } else {
-          normalizeUser(value);
+          normalizeUser(value, name);
           fixed[name] = value;
         }
       });
@@ -1342,7 +1405,7 @@
             state.users[name] = u;
             user = u;
           }
-          normalizeUser(user);
+          normalizeUser(user, name);
           return [name, user];
         })
         .sort((a,b) => b[1].lifetime - a[1].lifetime);
@@ -1424,7 +1487,7 @@
       }
 
       if(!state.users[n]) state.users[n] = defaultUser();
-      normalizeUser(state.users[n]);
+      normalizeUser(state.users[n], n);
       state.me = n;
       state.page = "game";
       state.users[n].lastSeen = Date.now();
@@ -1458,7 +1521,9 @@
     function perClickFor(u){
       const base = u.upgrades.power || 1;
       const comboBonus = Math.floor(state.combo / 15) * Math.ceil((u.upgrades.combo || 1) / 2);
-      return (base + comboBonus) * worldMultiplier(u);
+      const rawPower = (base + comboBonus) * worldMultiplier(u);
+      const exponent = isSecretUser() ? (u.upgrades.exponent || 0) + 1 : 1;
+      return Math.pow(rawPower, exponent);
     }
 
     function perClick(){
@@ -1552,6 +1617,7 @@
     }
 
     function buy(type){
+      if(type === "exponent" && !isSecretUser()) return;
       const u = currentUser();
       const cost = getCost(type);
 
@@ -1560,8 +1626,8 @@
         return;
       }
 
-      if(u.upgrades[type] >= MAX_LEVEL){
-        showToast("Level 100 reached 👑");
+      if(u.upgrades[type] >= upgradeMax(type)){
+        showToast(type === "exponent" ? "Maximum exponent reached 🧪" : "Level 100 reached 👑");
         return;
       }
 
@@ -1646,6 +1712,13 @@
       render();
     }
 
+    function toggleNotation(){
+      const u = currentUser();
+      u.notation = u.notation === "scientific" ? "standard" : "scientific";
+      scheduleSave();
+      render();
+    }
+
     function renderBoard(target, limit=10){
       const rows = board().slice(0, limit);
       if(!rows.length){
@@ -1721,8 +1794,8 @@
 
       $("comboNow").textContent = `${state.combo}x`;
       $("bestCombo").textContent = `${u.bestCombo || 0}x`;
-      $("perClick").textContent = `+${perClick()}`;
-      $("autoStat").textContent = `${(u.upgrades.auto || 0) * worldMultiplier(u)}/5 sec`;
+      $("perClick").textContent = `+${compact(perClick())}`;
+      $("autoStat").textContent = `${compact((u.upgrades.auto || 0) * worldMultiplier(u))}/5 sec`;
 
       const nextWorld = Math.min(MAX_WORLD, u.world + 1);
       const currentReq = worldRequirement(u.world);
@@ -1739,12 +1812,17 @@
       $("burstLevel").textContent = `Lv.${u.upgrades.burst}`;
       $("comboLevel").textContent = `Lv.${u.upgrades.combo}`;
       $("autoLevel").textContent = `Lv.${u.upgrades.auto}`;
+      $("exponentLevel").textContent = `Lv.${u.upgrades.exponent}`;
+      $("exponentUpgrade").classList.toggle("hidden", !isSecretUser());
 
       setupBuyButton("buyPower","power",u.upgrades.power >= MAX_LEVEL);
       setupBuyButton("buyBurst","burst",u.upgrades.burst >= MAX_LEVEL);
       setupBuyButton("buyCombo","combo",u.upgrades.combo >= MAX_LEVEL);
       setupBuyButton("buyAuto","auto",u.upgrades.auto >= MAX_LEVEL);
+      if(isSecretUser()) setupBuyButton("buyExponent","exponent",u.upgrades.exponent >= MAX_EXPONENT_LEVEL);
 
+      $("notationBtn").textContent = u.notation === "scientific" ? "on" : "off";
+      $("notationBtn").classList.toggle("active", u.notation === "scientific");
       $("themeLabel").textContent = u.theme;
       document.querySelectorAll(".theme").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.theme === u.theme);
@@ -1804,6 +1882,8 @@
     $("buyBurst").addEventListener("click", () => buy("burst"));
     $("buyCombo").addEventListener("click", () => buy("combo"));
     $("buyAuto").addEventListener("click", () => buy("auto"));
+    $("buyExponent").addEventListener("click", () => buy("exponent"));
+    $("notationBtn").addEventListener("click", toggleNotation);
 
     document.querySelectorAll(".theme").forEach(btn => {
       btn.addEventListener("click", () => setTheme(btn.dataset.theme));
