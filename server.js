@@ -11,8 +11,6 @@ const ROOT = __dirname;
 const DEFAULT_DATA_FILE = path.join(ROOT, "data", "leaderboard.json");
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_USERS = 10000;
-const MAX_SCORE_DIGITS = 10000;
-const MAX_SCORE = "9".repeat(MAX_SCORE_DIGITS);
 
 function normalizeWholeNumber(value) {
   if(typeof value === "number" && Number.isFinite(value) && value >= 0) {
@@ -24,11 +22,6 @@ function normalizeWholeNumber(value) {
 }
 
 const normalizeExponentLevel = normalizeWholeNumber;
-
-function normalizeScore(value) {
-  const digits = normalizeWholeNumber(value);
-  return digits.length > MAX_SCORE_DIGITS ? MAX_SCORE : digits;
-}
 
 function cleanUser(value, name) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
