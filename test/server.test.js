@@ -27,7 +27,8 @@ const player = lifetime => ({
   bestCombo: 20,
   upgrades: { power: 2, burst: 3, combo: 4, auto: 1 },
   achievements: { first: Date.now() },
-  theme: "fire"
+  theme: "fire",
+  notation: "standard"
 });
 
 test("leaderboard changes are visible to separate clients", async () => {
@@ -84,5 +85,35 @@ test("API rejects invalid users and oversized values are normalized", async () =
     const user = await saved.json();
     assert.equal(user.world, 100);
     assert.equal(user.upgrades.power, 100);
+  });
+});
+
+test("scientific notation and the uncapped jjh-only exponent upgrade are normalized", async () => {
+  await withServer(async base => {
+    const secretResponse = await fetch(`${base}/api/leaderboard/jjh`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...player(100000),
+        notation: "scientific",
+        upgrades: { ...player(0).upgrades, exponent: 12345 }
+      })
+    });
+    const secretUser = await secretResponse.json();
+    assert.equal(secretUser.notation, "scientific");
+    assert.equal(secretUser.upgrades.exponent, 12345);
+
+    const regularResponse = await fetch(`${base}/api/leaderboard/Alice`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...player(100000),
+        notation: "unsupported",
+        upgrades: { ...player(0).upgrades, exponent: 4 }
+      })
+    });
+    const regularUser = await regularResponse.json();
+    assert.equal(regularUser.notation, "standard");
+    assert.equal(regularUser.upgrades.exponent, 0);
   });
 });
