@@ -3,12 +3,15 @@
 const http = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const os = require("node:os");
 const { URL } = require("node:url");
 
 const ROOT = __dirname;
 const DEFAULT_DATA_FILE = path.join(ROOT, "data", "leaderboard.json");
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_USERS = 10000;
+const MAX_SCORE_DIGITS = 10000;
+const MAX_SCORE = "9".repeat(MAX_SCORE_DIGITS);
 
 function normalizeWholeNumber(value) {
   if(typeof value === "number" && Number.isFinite(value) && value >= 0) {
@@ -21,12 +24,17 @@ function normalizeWholeNumber(value) {
 
 const normalizeExponentLevel = normalizeWholeNumber;
 
+function normalizeScore(value) {
+  const digits = normalizeWholeNumber(value);
+  return digits.length > MAX_SCORE_DIGITS ? MAX_SCORE : digits;
+}
+
 function cleanUser(value, name) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const upgrades = value.upgrades && typeof value.upgrades === "object" ? value.upgrades : {};
   const achievements = value.achievements && typeof value.achievements === "object" ? value.achievements : {};
-  const count = normalizeWholeNumber(value.count);
-  const suppliedLifetime = normalizeWholeNumber(value.lifetime ?? count);
+  const count = normalizeScore(value.count);
+  const suppliedLifetime = normalizeScore(value.lifetime ?? count);
   const lifetime = BigInt(suppliedLifetime) >= BigInt(count) ? suppliedLifetime : count;
 
   return {
@@ -151,10 +159,26 @@ function createServer(options = {}) {
   });
 }
 
-if (require.main === module) {
-  const port = Number(process.env.PORT) || 3000;
-  const dataFile = process.env.DATA_FILE || DEFAULT_DATA_FILE;
-  createServer({ dataFile }).listen(port, () => console.log(`neekelijah.com listening on http://localhost:${port}`));
+function localNetworkUrls(port, interfaces = os.networkInterfaces()) {
+  return Object.values(interfaces)
+    .flatMap(addresses => addresses || [])
+    .filter(address => address.family === "IPv4" && !address.internal)
+    .map(address => `http://${address.address}:${port}`);
 }
 
-module.exports = { createServer, cleanUser, validUsername };
+if (require.main === module) {
+  const port = Number(process.env.PORT) || 3000;
+  const host = process.env.HOST || "0.0.0.0";
+  const dataFile = process.env.DATA_FILE || DEFAULT_DATA_FILE;
+  const server = createServer({ dataFile });
+  server.listen(port, host, () => {
+    const address = server.address();
+    const activePort = typeof address === "object" && address ? address.port : port;
+    console.log(`neekelijah.com listening on http://localhost:${activePort}`);
+    if (host === "0.0.0.0") {
+      for (const url of localNetworkUrls(activePort)) console.log(`Open on your phone: ${url}`);
+    }
+  });
+}
+
+module.exports = { createServer, cleanUser, validUsername, localNetworkUrls, normalizeScore, MAX_SCORE_DIGITS };

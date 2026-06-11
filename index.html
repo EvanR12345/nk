@@ -1087,6 +1087,8 @@
     const KEY = "neekelijah_html_upgraded_v3";
     const LEGACY_KEY = "neekelijah_html_upgraded_v2";
     const MAX_WORLD = 100;
+    const MAX_SCORE_DIGITS = 10000;
+    const MAX_SCORE = "9".repeat(MAX_SCORE_DIGITS);
     const LEADERBOARD_API = "/api/leaderboard";
 
     const EMOJIS = [
@@ -1202,9 +1204,27 @@
     }
 
     const normalizeExponentLevel = normalizeWholeNumber;
-    const scoreValue = value => BigInt(normalizeWholeNumber(value));
-    const scoreAtLeast = (value, minimum) => scoreValue(value) >= BigInt(minimum);
-    const compareScores = (a, b) => scoreValue(a) < scoreValue(b) ? -1 : scoreValue(a) > scoreValue(b) ? 1 : 0;
+
+    function normalizeScore(value){
+      const digits = normalizeWholeNumber(value);
+      return digits.length > MAX_SCORE_DIGITS ? MAX_SCORE : digits;
+    }
+
+    const scoreValue = value => BigInt(normalizeScore(value));
+
+    function compareScores(a, b){
+      const left = normalizeScore(a);
+      const right = normalizeScore(b);
+      if(left.length !== right.length) return left.length < right.length ? -1 : 1;
+      return left < right ? -1 : left > right ? 1 : 0;
+    }
+
+    const scoreAtLeast = (value, minimum) => compareScores(value, minimum) >= 0;
+
+    function addScoreValues(a, b){
+      const sum = scoreValue(a) + scoreValue(b);
+      return sum.toString().length > MAX_SCORE_DIGITS ? MAX_SCORE : sum.toString();
+    }
 
     function scientific(n){
       const digits = normalizeWholeNumber(n);
@@ -1266,9 +1286,9 @@
       if(typeof user === "number"){
         return user;
       }
-      user.count = normalizeWholeNumber(user.count);
+      user.count = normalizeScore(user.count);
       user.lifetime = compareScores(user.lifetime ?? user.count, user.count) >= 0
-        ? normalizeWholeNumber(user.lifetime ?? user.count)
+        ? normalizeScore(user.lifetime ?? user.count)
         : user.count;
       user.world = worldFor(user.lifetime);
       user.bestCombo = Number(user.bestCombo || 0);
@@ -1291,7 +1311,7 @@
       Object.entries(obj || {}).forEach(([name, value]) => {
         if(typeof value === "number"){
           const u = defaultUser();
-          u.count = normalizeWholeNumber(value);
+          u.count = normalizeScore(value);
           u.lifetime = u.count;
           fixed[name] = u;
         } else {
@@ -1314,12 +1334,17 @@
     function mergeUsers(local, remote){
       const merged = { ...local };
       Object.entries(remote || {}).forEach(([name, user]) => {
-        const localUser = merged[name];
-        if(!localUser || compareScores(user.lifetime, localUser.lifetime) >= 0){
-          merged[name] = user;
-        }
+        const localName = Object.keys(merged).find(existing => existing.toLocaleLowerCase() === name.toLocaleLowerCase());
+        const localUser = localName ? merged[localName] : null;
+        if(localName && localName !== name) delete merged[localName];
+        merged[name] = !localUser || compareScores(user.lifetime, localUser.lifetime) >= 0 ? user : localUser;
       });
       return merged;
+    }
+
+    function savedUsername(name){
+      const wanted = name.toLocaleLowerCase();
+      return Object.keys(state.users).find(existing => existing.toLocaleLowerCase() === wanted) || name;
     }
 
     async function apiRequest(path="", options={}){
@@ -1438,10 +1463,13 @@
     }
 
     function total(){
-      return Object.values(state.users).reduce((sum, user) => {
+      let sum = "0";
+      for(const user of Object.values(state.users)){
         const value = typeof user === "number" ? user : user.lifetime ?? user.count ?? 0;
-        return sum + scoreValue(value);
-      }, 0n).toString();
+        sum = addScoreValues(sum, value);
+        if(sum === MAX_SCORE) break;
+      }
+      return sum;
     }
 
     function showToast(msg){
@@ -1477,41 +1505,44 @@
       } catch(e){}
     }
 
-    function login(){
+    async function login(){
       const input = $("username");
-      const n = input.value.trim();
+      const requestedName = input.value.trim();
       const err = $("error");
       input.classList.remove("error");
       err.classList.add("hidden");
 
-      if(!n){
+      if(!requestedName){
         input.classList.add("error");
         err.textContent = "⚠️ Pick a username!";
         err.classList.remove("hidden");
         return;
       }
 
-      if(n.length < 2){
+      if(requestedName.length < 2){
         input.classList.add("error");
         err.textContent = "⚠️ At least 2 characters!";
         err.classList.remove("hidden");
         return;
       }
 
-      if(n.length > 16){
+      if(requestedName.length > 16){
         input.classList.add("error");
         err.textContent = "⚠️ Max 16 characters!";
         err.classList.remove("hidden");
         return;
       }
 
-      if(["__proto__","prototype","constructor"].includes(n.toLowerCase())){
+      if(["__proto__","prototype","constructor"].includes(requestedName.toLowerCase())){
         input.classList.add("error");
         err.textContent = "⚠️ Pick a different username!";
         err.classList.remove("hidden");
         return;
       }
 
+      // Refresh before choosing the account so a phone cannot start from a stale local copy.
+      await syncLeaderboard();
+      const n = savedUsername(requestedName);
       if(!state.users[n]) state.users[n] = defaultUser();
       normalizeUser(state.users[n], n);
       state.me = n;
@@ -1544,8 +1575,8 @@
     }
 
     function addPoints(user, amount){
-      user.count = (scoreValue(user.count) + scoreValue(amount)).toString();
-      user.lifetime = (scoreValue(user.lifetime) + scoreValue(amount)).toString();
+      user.count = addScoreValues(user.count, amount);
+      user.lifetime = addScoreValues(user.lifetime, amount);
     }
 
     function perClickFor(u){
@@ -1557,15 +1588,16 @@
       if(!isSecretUser() || rawPower <= 1n) return rawPower.toString();
 
       const exponent = BigInt(normalizeExponentLevel(u.upgrades.exponent)) + 1n;
-      const estimatedDigits = Number(exponent <= 1000000n ? exponent : 1000001n) * Math.log10(Number(rawPower));
-      if(estimatedDigits <= 10000){
-        return (rawPower ** exponent).toString();
-      }
+      const rawDigits = rawPower.toString();
+      if(rawDigits.length >= MAX_SCORE_DIGITS || exponent > BigInt(MAX_SCORE_DIGITS)) return MAX_SCORE;
 
-      // Once a direct power would be too large to build safely, every click squares
-      // the current scale. Growth remains exponential without imposing a score cap.
-      const currentScale = scoreValue(u.lifetime) > rawPower ? scoreValue(u.lifetime) : rawPower;
-      return (currentScale * currentScale).toString();
+      // Estimate the result before exponentiation. Building a value beyond this size
+      // can freeze or crash a browser, so scores saturate at a stable displayable value.
+      const leading = Number(rawDigits.slice(0, 16)) / (10 ** Math.min(15, rawDigits.length - 1));
+      const log10Raw = (rawDigits.length - 1) + Math.log10(leading);
+      const estimatedDigits = Math.floor(Number(exponent) * log10Raw) + 1;
+      if(!Number.isFinite(estimatedDigits) || estimatedDigits > MAX_SCORE_DIGITS) return MAX_SCORE;
+      return normalizeScore(rawPower ** exponent);
     }
 
     function perClick(){
