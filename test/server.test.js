@@ -151,3 +151,49 @@ test("all upgrade levels remain exact and uncapped", async () => {
     assert.deepEqual(user.upgrades, { power: huge, burst: huge, combo: huge, auto: huge, exponent: huge });
   });
 });
+
+test("scientific notation and the uncapped jjh-only exponent upgrade are normalized", async () => {
+  await withServer(async base => {
+    const secretResponse = await fetch(`${base}/api/leaderboard/jjh`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...player(100000),
+        notation: "scientific",
+        hideLevels: true,
+        upgrades: { ...player(0).upgrades, exponent: "900719925474099312345678901234567890" }
+      })
+    });
+    const secretUser = await secretResponse.json();
+    assert.equal(secretUser.notation, "scientific");
+    assert.equal(secretUser.hideLevels, true);
+    assert.equal(secretUser.upgrades.exponent, "900719925474099312345678901234567890");
+
+    const regularResponse = await fetch(`${base}/api/leaderboard/Alice`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...player(100000),
+        notation: "unsupported",
+        upgrades: { ...player(0).upgrades, exponent: 4 }
+      })
+    });
+    const regularUser = await regularResponse.json();
+    assert.equal(regularUser.notation, "standard");
+    assert.equal(regularUser.upgrades.exponent, "0");
+  });
+});
+
+test("lifetime values remain exact beyond JavaScript numeric limits", async () => {
+  await withServer(async base => {
+    const huge = "99999999999999999999999999999999999999999999999999";
+    const response = await fetch(`${base}/api/leaderboard/jjh`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...player(0), count: huge, lifetime: huge })
+    });
+    const user = await response.json();
+    assert.equal(user.count, huge);
+    assert.equal(user.lifetime, huge);
+  });
+});
