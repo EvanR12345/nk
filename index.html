@@ -1036,6 +1036,7 @@
     const LEGACY_KEY = "neekelijah_html_upgraded_v2";
     const MAX_LEVEL = 100;
     const MAX_WORLD = 100;
+    const LEADERBOARD_API = "/api/leaderboard";
 
     const EMOJIS = [
       "💥","⚡","🔥","✨","💫","🤣","😤","👊","💢","🎯","😂","🤙","😈","💀","🫡","😵",
@@ -1118,6 +1119,13 @@
       saveTimer:null,
       autoTimer:null,
       syncTimer:null,
+      clickFrame:null,
+      panelTimer:null,
+      pendingClicks:0,
+      lastEffect:-Infinity,
+      lastBeep:-Infinity,
+      audioContext:null,
+      saveDirty:false,
       storageMode:"local"
     };
 
@@ -1180,7 +1188,7 @@
       user.world = worldFor(user.lifetime);
       user.bestCombo = Number(user.bestCombo || 0);
       user.createdAt = user.createdAt || Date.now();
-      user.lastSeen = Date.now();
+      user.lastSeen = Number(user.lastSeen || user.createdAt);
       user.upgrades = user.upgrades || {};
       user.upgrades.power = Math.min(MAX_LEVEL, Math.max(1, Number(user.upgrades.power || 1)));
       user.upgrades.burst = Math.min(MAX_LEVEL, Math.max(1, Number(user.upgrades.burst || 1)));
@@ -1205,58 +1213,124 @@
       return fixed;
     }
 
-    async function load(){
+    function localUsers(){
       try{
-        if(window.storage && window.storage.get){
-          const r = await window.storage.get(KEY, true);
-          const legacy = r ? null : await window.storage.get(LEGACY_KEY, true);
-          state.users = normalizeAll(JSON.parse((r || legacy)?.value || "{}"));
-          state.storageMode = "global";
-        } else {
-          const saved = localStorage.getItem(KEY) || localStorage.getItem(LEGACY_KEY) || "{}";
-          state.users = normalizeAll(JSON.parse(saved));
-          state.storageMode = "local";
-        }
+        const saved = localStorage.getItem(KEY) || localStorage.getItem(LEGACY_KEY) || "{}";
+        return normalizeAll(JSON.parse(saved));
       } catch(e){
-        state.users = {};
+        return {};
+      }
+    }
+
+    function mergeUsers(local, remote){
+      const merged = { ...local };
+      Object.entries(remote || {}).forEach(([name, user]) => {
+        const localUser = merged[name];
+        if(!localUser || Number(user.lifetime || 0) >= Number(localUser.lifetime || 0)){
+          merged[name] = user;
+        }
+      });
+      return merged;
+    }
+
+    async function apiRequest(path="", options={}){
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4000);
+      try{
+        const response = await fetch(`${LEADERBOARD_API}${path}`, {
+          ...options,
+          signal:controller.signal,
+          headers:{ "Content-Type":"application/json", ...(options.headers || {}) }
+        });
+        if(!response.ok) throw new Error(`Leaderboard request failed: ${response.status}`);
+        return await response.json();
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    async function load(){
+      const local = localUsers();
+      state.users = local;
+      try{
+        const remote = normalizeAll(await apiRequest());
+        state.users = mergeUsers(local, remote);
+        state.storageMode = "global";
+      } catch(e){
+        state.storageMode = "local";
       }
       startLeaderboardSync();
       render();
     }
 
     async function save(){
+      if(state.me && state.users[state.me]) state.users[state.me].lastSeen = Date.now();
+
+      // Always retain an offline copy. The API copy is what makes the board shared by every device.
       try{
-        if(window.storage && window.storage.set){
-          const latest = await window.storage.get(KEY, true);
-          const merged = latest ? normalizeAll(JSON.parse(latest.value)) : {};
-          if(state.me && state.users[state.me]) merged[state.me] = state.users[state.me];
-          else Object.assign(merged, state.users);
-          state.users = merged;
-          await window.storage.set(KEY, JSON.stringify(state.users), true);
-        } else {
-          localStorage.setItem(KEY, JSON.stringify(state.users));
-        }
+        localStorage.setItem(KEY, JSON.stringify(state.users));
       } catch(e){}
+
+      if(!state.me || !state.users[state.me]) return;
+      try{
+        await apiRequest(`/${encodeURIComponent(state.me)}`, {
+          method:"PUT",
+          body:JSON.stringify(state.users[state.me]),
+          keepalive:true
+        });
+        if(state.storageMode !== "global"){
+          state.storageMode = "global";
+          startLeaderboardSync();
+        }
+      } catch(e){
+        state.storageMode = "local";
+      }
+    }
+
+    async function syncLeaderboard(){
+      try{
+        const remote = normalizeAll(await apiRequest());
+        const mine = state.me ? state.users[state.me] : null;
+        state.users = mergeUsers(localUsers(), remote);
+        if(state.me && mine){
+          const serverMine = remote[state.me];
+          state.users[state.me] = !serverMine || mine.lifetime >= serverMine.lifetime ? mine : serverMine;
+        }
+        state.storageMode = "global";
+        render();
+      } catch(e){
+        state.storageMode = "local";
+      }
     }
 
     function startLeaderboardSync(){
       clearInterval(state.syncTimer);
-      if(state.storageMode !== "global") return;
-      state.syncTimer = setInterval(async () => {
-        try{
-          const latest = await window.storage.get(KEY, true);
-          if(!latest) return;
-          const mine = state.me ? state.users[state.me] : null;
-          state.users = normalizeAll(JSON.parse(latest.value));
-          if(state.me && mine) state.users[state.me] = mine;
-          render();
-        } catch(e){}
-      }, 8000);
+      state.syncTimer = setInterval(syncLeaderboard, 5000);
     }
 
     function scheduleSave(){
-      clearTimeout(state.saveTimer);
-      state.saveTimer = setTimeout(save, 120);
+      state.saveDirty = true;
+      if(state.saveTimer) return;
+      state.saveTimer = setTimeout(async () => {
+        state.saveTimer = null;
+        if(!state.saveDirty) return;
+        state.saveDirty = false;
+        await save();
+        if(state.saveDirty) scheduleSave();
+      }, 250);
+    }
+
+    function schedulePanelRender(){
+      if(state.panelTimer) return;
+      state.panelTimer = setTimeout(() => {
+        state.panelTimer = null;
+        if(state.page !== "game" || !state.me) return;
+        const rows = board();
+        renderBoard($("gameBoard"), Infinity);
+        const rank = rows.findIndex(([name]) => name === state.me);
+        $("rankLine").textContent = rank !== -1 ? `· rank ${medal(rank)}` : "";
+        renderAchievements();
+      }, 250);
     }
 
     function board(){
@@ -1289,10 +1363,14 @@
       t._timer = setTimeout(() => t.classList.remove("show"), 1700);
     }
 
-    function beep(){
-      if(!state.sound) return;
+    function beep(now=performance.now()){
+      if(!state.sound || now - state.lastBeep < 50) return;
+      state.lastBeep = now;
       try{
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if(!AudioContext) return;
+        const ctx = state.audioContext || (state.audioContext = new AudioContext());
+        if(ctx.state === "suspended") ctx.resume();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "square";
@@ -1303,6 +1381,10 @@
         osc.start();
         gain.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + .08);
         osc.stop(ctx.currentTime + .09);
+        osc.addEventListener("ended", () => {
+          osc.disconnect();
+          gain.disconnect();
+        }, { once:true });
       } catch(e){}
     }
 
@@ -1334,10 +1416,18 @@
         return;
       }
 
+      if(["__proto__","prototype","constructor"].includes(n.toLowerCase())){
+        input.classList.add("error");
+        err.textContent = "⚠️ Pick a different username!";
+        err.classList.remove("hidden");
+        return;
+      }
+
       if(!state.users[n]) state.users[n] = defaultUser();
       normalizeUser(state.users[n]);
       state.me = n;
       state.page = "game";
+      state.users[n].lastSeen = Date.now();
       state.combo = 0;
       applyTheme(currentUser().theme);
       scheduleSave();
@@ -1365,11 +1455,14 @@
       if(!silent) render();
     }
 
-    function perClick(){
-      const u = currentUser();
+    function perClickFor(u){
       const base = u.upgrades.power || 1;
       const comboBonus = Math.floor(state.combo / 15) * Math.ceil((u.upgrades.combo || 1) / 2);
       return (base + comboBonus) * worldMultiplier(u);
+    }
+
+    function perClick(){
+      return perClickFor(currentUser());
     }
 
     function handleNeek(){
@@ -1378,35 +1471,59 @@
       else state.combo = 1;
       state.lastClick = now;
 
-      const u = currentUser();
+      // The hot path only mutates game state. DOM work is coalesced to one pass per frame.
+      const u = state.users[state.me];
       u.bestCombo = Math.max(u.bestCombo || 0, state.combo);
-
-      const amount = perClick();
+      const amount = perClickFor(u);
       u.count += amount;
       u.lifetime += amount;
-      updateWorld(u);
+      u.lastSeen = now;
+      state.pendingClicks += 1;
 
-      explode();
-      showQuip();
       beep();
-      checkAchievements();
       scheduleSave();
-      render();
+      scheduleClickFrame();
+    }
+
+    function scheduleClickFrame(){
+      if(state.clickFrame) return;
+      state.clickFrame = requestAnimationFrame(flushClickFrame);
+    }
+
+    function flushClickFrame(now){
+      state.clickFrame = null;
+      if(!state.pendingClicks || state.page !== "game" || !state.me) return;
+      state.pendingClicks = 0;
+
+      const u = state.users[state.me];
+      updateWorld(u);
+      checkAchievements();
+      render(false);
+
+      // Effects are deliberately capped so input can never create an unbounded DOM queue.
+      if(now - state.lastEffect >= 80){
+        state.lastEffect = now;
+        explode();
+        showQuip();
+      }
     }
 
     function explode(){
       const area = $("buttonArea");
       const btn = $("neekBtn");
       btn.classList.add("hit");
-      setTimeout(() => btn.classList.remove("hit"), 110);
+      clearTimeout(btn._hitTimer);
+      btn._hitTimer = setTimeout(() => btn.classList.remove("hit"), 110);
 
+      area.querySelector(".ripple")?.remove();
       const rip = document.createElement("div");
       rip.className = "ripple";
       area.appendChild(rip);
       setTimeout(() => rip.remove(), 900);
 
-      const u = currentUser();
-      const particleCount = Math.min(70, 10 + Math.ceil(Math.sqrt(u.upgrades.burst) * 6));
+      const u = state.users[state.me];
+      const particleCount = Math.min(16, 6 + Math.ceil(Math.sqrt(u.upgrades.burst) * 2));
+      const fragment = document.createDocumentFragment();
 
       for(let i = 0; i < particleCount; i++){
         const p = document.createElement("span");
@@ -1417,9 +1534,10 @@
         p.style.setProperty("--dx", `${Math.round(Math.cos(angle) * distance)}px`);
         p.style.setProperty("--dy", `${Math.round(Math.sin(angle) * distance)}px`);
         p.style.setProperty("--rot", `${Math.round((Math.random() - .5) * 720)}deg`);
-        area.appendChild(p);
+        fragment.appendChild(p);
         setTimeout(() => p.remove(), 850);
       }
+      area.appendChild(fragment);
     }
 
     function showQuip(){
@@ -1563,7 +1681,7 @@
       $("wordCloud").innerHTML = WORDS.map(w => `<span class="word-chip">${escapeHtml(w)}</span>`).join("");
     }
 
-    function render(){
+    function render(full=true){
       $("loginScreen").classList.toggle("hidden", state.page !== "login");
       $("gameScreen").classList.toggle("hidden", state.page !== "game");
 
@@ -1571,17 +1689,19 @@
       $("totalPill").textContent = `${compact(t)} total neeks`;
       $("loginTotal").textContent = `${compact(t)} total`;
 
-      renderBoard($("loginBoard"), Infinity);
+      if(full || state.page === "login"){
+        renderBoard($("loginBoard"), Infinity);
 
-      const input = $("username");
-      const name = input.value.trim();
-      const welcome = $("welcomeBack");
-      if(state.users[name] && name.length >= 2 && state.page === "login"){
-        const u = typeof state.users[name] === "number" ? {count:state.users[name]} : state.users[name];
-        welcome.textContent = `👋 Welcome back — you have ${compact(u.lifetime ?? u.count)} lifetime neeks!`;
-        welcome.classList.remove("hidden");
-      } else {
-        welcome.classList.add("hidden");
+        const input = $("username");
+        const name = input.value.trim();
+        const welcome = $("welcomeBack");
+        if(state.users[name] && name.length >= 2 && state.page === "login"){
+          const u = typeof state.users[name] === "number" ? {count:state.users[name]} : state.users[name];
+          welcome.textContent = `👋 Welcome back — you have ${compact(u.lifetime ?? u.count)} lifetime neeks!`;
+          welcome.classList.remove("hidden");
+        } else {
+          welcome.classList.add("hidden");
+        }
       }
 
       if(state.page !== "game" || !state.me) return;
@@ -1590,9 +1710,11 @@
       applyTheme(u.theme);
 
       $("meName").textContent = state.me;
-      const rows = board();
-      const rank = rows.findIndex(([name]) => name === state.me);
-      $("rankLine").textContent = rank !== -1 ? `· rank ${medal(rank)}` : "";
+      if(full){
+        const rows = board();
+        const rank = rows.findIndex(([name]) => name === state.me);
+        $("rankLine").textContent = rank !== -1 ? `· rank ${medal(rank)}` : "";
+      }
       $("bigCount").textContent = compact(u.lifetime);
       $("pointsLabel").textContent = `${compact(u.count)} points`;
       $("boardTotal").textContent = `${compact(t)} total`;
@@ -1630,6 +1752,10 @@
 
       $("soundBtn").textContent = state.sound ? "🔊 sound" : "🔇 muted";
 
+      if(!full){
+        schedulePanelRender();
+        return;
+      }
       renderBoard($("gameBoard"), Infinity);
       renderAchievements();
       renderWords();
