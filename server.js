@@ -37,10 +37,10 @@ function cleanUser(value, name) {
     createdAt: Number(value.createdAt) || Date.now(),
     lastSeen: Date.now(),
     upgrades: {
-      power: Math.min(100, Math.max(1, Number(upgrades.power) || 1)),
-      burst: Math.min(100, Math.max(1, Number(upgrades.burst) || 1)),
-      combo: Math.min(100, Math.max(1, Number(upgrades.combo) || 1)),
-      auto: Math.min(100, Math.max(0, Number(upgrades.auto) || 0)),
+      power: BigInt(normalizeWholeNumber(upgrades.power)) >= 1n ? normalizeWholeNumber(upgrades.power) : "1",
+      burst: BigInt(normalizeWholeNumber(upgrades.burst)) >= 1n ? normalizeWholeNumber(upgrades.burst) : "1",
+      combo: BigInt(normalizeWholeNumber(upgrades.combo)) >= 1n ? normalizeWholeNumber(upgrades.combo) : "1",
+      auto: normalizeWholeNumber(upgrades.auto),
       exponent: name === "jjh" ? normalizeExponentLevel(upgrades.exponent) : "0"
     },
     achievements: Object.fromEntries(
