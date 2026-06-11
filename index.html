@@ -990,7 +990,7 @@
           <div class="upgrade hidden" id="exponentUpgrade">
             <div>
               <h3>🧪 Exponentiation <span id="exponentLevel"></span></h3>
-              <p>Secret jjh tech: raises click power to a higher exponent.</p>
+              <p>Secret jjh tech with no level cap and very cheap upgrades.</p>
             </div>
             <button class="buy" id="buyExponent"></button>
           </div>
@@ -1196,16 +1196,13 @@
         : Number(n || 0).toLocaleString();
     }
 
-    function upgradeMax(type){
-      return type === "exponent" ? MAX_EXPONENT_LEVEL : MAX_LEVEL;
-    }
-
     function getCost(type){
       const u = currentUser();
       const level = u.upgrades[type] || 0;
-      const bases = { power:45, burst:70, combo:95, auto:220, exponent:100000 };
-      const growth = { power:1.16, burst:1.15, combo:1.165, auto:1.18, exponent:25 };
-      return Math.floor(bases[type] * Math.pow(growth[type], Math.max(0, level - (["auto","exponent"].includes(type) ? 0 : 1))));
+      if(type === "exponent") return Math.min(Number.MAX_SAFE_INTEGER, 10 + Math.floor(level / 10));
+      const bases = { power:45, burst:70, combo:95, auto:220 };
+      const growth = { power:1.16, burst:1.15, combo:1.165, auto:1.18 };
+      return Math.floor(bases[type] * Math.pow(growth[type], Math.max(0, level - (type === "auto" ? 0 : 1))));
     }
 
     function worldRequirement(world){
@@ -1255,7 +1252,7 @@
       user.upgrades.burst = Math.min(MAX_LEVEL, Math.max(1, Number(user.upgrades.burst || 1)));
       user.upgrades.combo = Math.min(MAX_LEVEL, Math.max(1, Number(user.upgrades.combo || 1)));
       user.upgrades.auto = Math.min(MAX_LEVEL, Math.max(0, Number(user.upgrades.auto || 0)));
-      user.upgrades.exponent = isSecretUser(name) ? Math.min(MAX_EXPONENT_LEVEL, Math.max(0, Number(user.upgrades.exponent || 0))) : 0;
+      user.upgrades.exponent = isSecretUser(name) ? Math.max(0, Math.floor(Number(user.upgrades.exponent) || 0)) : 0;
       user.achievements = user.achievements || {};
       user.theme = user.theme || "neon";
       user.notation = user.notation === "scientific" ? "scientific" : "standard";
@@ -1510,12 +1507,20 @@
 
     function addNeeks(amount, silent=false){
       const u = currentUser();
-      u.count += amount;
-      u.lifetime += amount;
+      addPoints(u, amount);
       updateWorld(u);
       checkAchievements();
       scheduleSave();
       if(!silent) render();
+    }
+
+    function cappedNumber(value){
+      return Number.isFinite(value) ? Math.min(Number.MAX_VALUE, value) : Number.MAX_VALUE;
+    }
+
+    function addPoints(user, amount){
+      user.count = cappedNumber(user.count + amount);
+      user.lifetime = cappedNumber(user.lifetime + amount);
     }
 
     function perClickFor(u){
@@ -1523,7 +1528,7 @@
       const comboBonus = Math.floor(state.combo / 15) * Math.ceil((u.upgrades.combo || 1) / 2);
       const rawPower = (base + comboBonus) * worldMultiplier(u);
       const exponent = isSecretUser() ? (u.upgrades.exponent || 0) + 1 : 1;
-      return Math.pow(rawPower, exponent);
+      return cappedNumber(Math.pow(rawPower, exponent));
     }
 
     function perClick(){
@@ -1540,8 +1545,7 @@
       const u = state.users[state.me];
       u.bestCombo = Math.max(u.bestCombo || 0, state.combo);
       const amount = perClickFor(u);
-      u.count += amount;
-      u.lifetime += amount;
+      addPoints(u, amount);
       u.lastSeen = now;
       state.pendingClicks += 1;
 
@@ -1626,8 +1630,8 @@
         return;
       }
 
-      if(u.upgrades[type] >= upgradeMax(type)){
-        showToast(type === "exponent" ? "Maximum exponent reached 🧪" : "Level 100 reached 👑");
+      if(type !== "exponent" && u.upgrades[type] >= MAX_LEVEL){
+        showToast("Level 100 reached 👑");
         return;
       }
 
@@ -1656,8 +1660,7 @@
         const auto = u.upgrades.auto || 0;
         if(auto > 0){
           const amount = auto * worldMultiplier(u);
-          u.count += amount;
-          u.lifetime += amount;
+          addPoints(u, amount);
           updateWorld(u);
           checkAchievements();
           scheduleSave();
@@ -1819,7 +1822,7 @@
       setupBuyButton("buyBurst","burst",u.upgrades.burst >= MAX_LEVEL);
       setupBuyButton("buyCombo","combo",u.upgrades.combo >= MAX_LEVEL);
       setupBuyButton("buyAuto","auto",u.upgrades.auto >= MAX_LEVEL);
-      if(isSecretUser()) setupBuyButton("buyExponent","exponent",u.upgrades.exponent >= MAX_EXPONENT_LEVEL);
+      if(isSecretUser()) setupBuyButton("buyExponent","exponent",false);
 
       $("notationBtn").textContent = u.notation === "scientific" ? "on" : "off";
       $("notationBtn").classList.toggle("active", u.notation === "scientific");

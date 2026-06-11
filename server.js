@@ -29,7 +29,7 @@ function cleanUser(value, name) {
       burst: Math.min(100, Math.max(1, Number(upgrades.burst) || 1)),
       combo: Math.min(100, Math.max(1, Number(upgrades.combo) || 1)),
       auto: Math.min(100, Math.max(0, Number(upgrades.auto) || 0)),
-      exponent: name === "jjh" ? Math.min(5, Math.max(0, Number(upgrades.exponent) || 0)) : 0
+      exponent: name === "jjh" ? Math.max(0, Math.floor(Number(upgrades.exponent) || 0)) : 0
     },
     achievements: Object.fromEntries(
       Object.entries(achievements).slice(0, 100).map(([key, unlockedAt]) => [String(key).slice(0, 40), Number(unlockedAt) || Date.now()])

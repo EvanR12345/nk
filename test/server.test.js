@@ -88,7 +88,7 @@ test("API rejects invalid users and oversized values are normalized", async () =
   });
 });
 
-test("scientific notation and the jjh-only exponent upgrade are normalized", async () => {
+test("scientific notation and the uncapped jjh-only exponent upgrade are normalized", async () => {
   await withServer(async base => {
     const secretResponse = await fetch(`${base}/api/leaderboard/jjh`, {
       method: "PUT",
@@ -96,12 +96,12 @@ test("scientific notation and the jjh-only exponent upgrade are normalized", asy
       body: JSON.stringify({
         ...player(100000),
         notation: "scientific",
-        upgrades: { ...player(0).upgrades, exponent: 99 }
+        upgrades: { ...player(0).upgrades, exponent: 12345 }
       })
     });
     const secretUser = await secretResponse.json();
     assert.equal(secretUser.notation, "scientific");
-    assert.equal(secretUser.upgrades.exponent, 5);
+    assert.equal(secretUser.upgrades.exponent, 12345);
 
     const regularResponse = await fetch(`${base}/api/leaderboard/Alice`, {
       method: "PUT",
