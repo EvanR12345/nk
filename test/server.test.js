@@ -5,7 +5,8 @@ const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
-const { createServer } = require("../server");
+const { createServer, localNetworkUrls } = require("../server");
+const { normalizeScore, compareScores, addScores, subtractScores, powerOfWhole } = require("../score");
 
 async function withServer(run) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "neek-leaderboard-"));
@@ -195,5 +196,62 @@ test("lifetime values remain exact beyond JavaScript numeric limits", async () =
     const user = await response.json();
     assert.equal(user.count, huge);
     assert.equal(user.lifetime, huge);
+  });
+});
+
+
+test("local network URLs include only external IPv4 addresses", () => {
+  const interfaces = {
+    lo: [{ family: "IPv4", address: "127.0.0.1", internal: true }],
+    wifi: [{ family: "IPv4", address: "192.168.1.42", internal: false }],
+    docker: [{ family: "IPv4", address: "172.17.0.1", internal: false }],
+    ipv6: [{ family: "IPv6", address: "fe80::1", internal: false }]
+  };
+
+  assert.deepEqual(localNetworkUrls(3000, interfaces), [
+    "http://192.168.1.42:3000",
+    "http://172.17.0.1:3000"
+  ]);
+});
+
+
+test("multi-million-digit scientific scores stay compact", () => {
+  assert.equal(normalizeScore("1.5e+3000000"), "1.5e+3000000");
+  assert.equal(compareScores("1.5e+3000000", "9.9e+2999999"), 1);
+  assert.equal(addScores("1.5e+3000000", "1e+3000000"), "2.5e+3000000");
+  assert.equal(subtractScores("1.5e+3000000", "5e+2999999"), "1e+3000000");
+
+  const enormousExponent = "1.25e+999999999999999999999999999999";
+  assert.equal(normalizeScore(enormousExponent), enormousExponent);
+  assert.equal(compareScores(enormousExponent, "9.99e+3000000"), 1);
+});
+
+test("powers beyond millions of digits use compact scientific notation", () => {
+  const result = powerOfWhole(10n, 3000001n);
+  assert.equal(result, "1e+3000001");
+  assert.ok(result.length < 32);
+});
+
+test("API preserves compact scientific scores", async () => {
+  await withServer(async base => {
+    const response = await fetch(`${base}/api/leaderboard/Giant`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...player(0), count: "1.5e+3000000", lifetime: "1.5e+3000000" })
+    });
+    const user = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(user.count, "1.5e+3000000");
+    assert.equal(user.lifetime, "1.5e+3000000");
+  });
+});
+
+test("score math browser asset is served", async () => {
+  await withServer(async base => {
+    const response = await fetch(`${base}/score.js`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /text\/javascript/);
+    assert.match(await response.text(), /powerOfWhole/);
   });
 });

@@ -3,7 +3,9 @@
 const http = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const os = require("node:os");
 const { URL } = require("node:url");
+const { normalizeScore, compareScores } = require("./score");
 
 const ROOT = __dirname;
 const DEFAULT_DATA_FILE = path.join(ROOT, "data", "leaderboard.json");
@@ -25,9 +27,9 @@ function cleanUser(value, name) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const upgrades = value.upgrades && typeof value.upgrades === "object" ? value.upgrades : {};
   const achievements = value.achievements && typeof value.achievements === "object" ? value.achievements : {};
-  const count = normalizeWholeNumber(value.count);
-  const suppliedLifetime = normalizeWholeNumber(value.lifetime ?? count);
-  const lifetime = BigInt(suppliedLifetime) >= BigInt(count) ? suppliedLifetime : count;
+  const count = normalizeScore(value.count);
+  const suppliedLifetime = normalizeScore(value.lifetime ?? count);
+  const lifetime = compareScores(suppliedLifetime, count) >= 0 ? suppliedLifetime : count;
 
   return {
     count,
@@ -133,11 +135,15 @@ function createServer(options = {}) {
 
       if (req.method !== "GET" && req.method !== "HEAD") return json(res, 405, { error: "Method not allowed" });
       const requested = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
-      const file = path.resolve(ROOT, requested);
-      if (file !== path.join(ROOT, "index.html")) return json(res, 404, { error: "Not found" });
+      const publicFiles = new Map([
+        ["index.html", "text/html; charset=utf-8"],
+        ["score.js", "text/javascript; charset=utf-8"]
+      ]);
+      if (!publicFiles.has(requested)) return json(res, 404, { error: "Not found" });
+      const file = path.join(ROOT, requested);
       const content = await fs.readFile(file);
       res.writeHead(200, {
-        "Content-Type": "text/html; charset=utf-8",
+        "Content-Type": publicFiles.get(requested),
         "Content-Length": content.length,
         "Cache-Control": "no-cache",
         "X-Content-Type-Options": "nosniff"
@@ -151,10 +157,26 @@ function createServer(options = {}) {
   });
 }
 
-if (require.main === module) {
-  const port = Number(process.env.PORT) || 3000;
-  const dataFile = process.env.DATA_FILE || DEFAULT_DATA_FILE;
-  createServer({ dataFile }).listen(port, () => console.log(`neekelijah.com listening on http://localhost:${port}`));
+function localNetworkUrls(port, interfaces = os.networkInterfaces()) {
+  return Object.values(interfaces)
+    .flatMap(addresses => addresses || [])
+    .filter(address => address.family === "IPv4" && !address.internal)
+    .map(address => `http://${address.address}:${port}`);
 }
 
-module.exports = { createServer, cleanUser, validUsername };
+if (require.main === module) {
+  const port = Number(process.env.PORT) || 3000;
+  const host = process.env.HOST || "0.0.0.0";
+  const dataFile = process.env.DATA_FILE || DEFAULT_DATA_FILE;
+  const server = createServer({ dataFile });
+  server.listen(port, host, () => {
+    const address = server.address();
+    const activePort = typeof address === "object" && address ? address.port : port;
+    console.log(`neekelijah.com listening on http://localhost:${activePort}`);
+    if (host === "0.0.0.0") {
+      for (const url of localNetworkUrls(activePort)) console.log(`Open on your phone: ${url}`);
+    }
+  });
+}
+
+module.exports = { createServer, cleanUser, validUsername, localNetworkUrls };
