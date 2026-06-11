@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>neekelijah.com</title>
+  <style>
+    :root{
+      --bg1:#0c0a16;
+      --bg2:#150b2c;
+      --bg3:#080f1b;
+      --main:#ff3e8c;
+      --main2:#8b5cf6;
+      --main3:#60cbff;
+      --gold:#fbbf24;
+      --text:#ede8ff;
+      --muted:rgba(255,255,255,.42);
+      --card:rgba(255,255,255,.055);
+      --line:rgba(255,255,255,.1);
+      --danger:#ff6b9d;
+    }
+
+    *{box-sizing:border-box}
+
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family:"Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background:linear-gradient(145deg,var(--bg1),var(--bg2) 45%,var(--bg3));
+      color:var(--text);
+      overflow-x:hidden;
+    }
+
+    body.fire{
+      --bg1:#190907;
+      --bg2:#351005;
+      --bg3:#080503;
+      --main:#ff4d00;
+      --main2:#ffb000;
+      --main3:#ff3e3e;
+      --gold:#ffd166;
+    }
+
+    body.ice{
+      --bg1:#06111f;
+      --bg2:#0d2743;
+      --bg3:#02101f;
+      --main:#38bdf8;
+      --main2:#818cf8;
+      --main3:#a7f3d0;
+      --gold:#b9fbc0;
+    }
+
+    body.toxic{
+      --bg1:#07130a;
+      --bg2:#102b14;
+      --bg3:#020802;
+      --main:#22c55e;
+      --main2:#84cc16;
+      --main3:#67e8f9;
+      --gold:#bef264;
+    }
+
+    button,input{
+      font:inherit;
+    }
+
+    input{
+      outline:none;
+    }
+
+    ::placeholder{
+      color:rgba(255,255,255,.28);
+    }
+
+    .hidden{
+      display:none!important;
+    }
+
+    .app{
+      position:relative;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:22px;
+      overflow:hidden;
+    }
+
+    .blob{
+      position:fixed;
+      border-radius:999px;
+      filter:blur(110px);
+      pointer-events:none;
+      z-index:0;
+      opacity:.08;
+    }
+
+    .blob.one{
+      top:-18%;
+      left:-10%;
+      width:530px;
+      height:530px;
+      background:var(--main);
+      animation:blobOne 12s ease-in-out infinite;
+    }
+
+    .blob.two{
+      right:-12%;
+      bottom:-22%;
+      width:640px;
+      height:640px;
+      background:var(--main2);
+      animation:blobTwo 15s ease-in-out infinite;
+    }
+
+    .blob.three{
+      right:-4%;
+      top:31%;
+      width:320px;
+      height:320px;
+      background:var(--main3);
+      opacity:.045;
+      animation:blobThree 10s ease-in-out infinite;
+    }
+
+    @keyframes blobOne{
+      0%,100%{transform:translate(0,0) scale(1)}
+      50%{transform:translate(55px,-45px) scale(1.12)}
+    }
+
+    @keyframes blobTwo{
+      0%,100%{transform:translate(0,0) scale(1)}
+      50%{transform:translate(-45px,55px) scale(.9)}
+    }
+
+    @keyframes blobThree{
+      0%,100%{transform:translate(0,0) scale(1)}
+      50%{transform:translate(-30px,-35px) scale(1.08)}
+    }
+
+    .screen{
+      width:100%;
+      max-width:1180px;
+      position:relative;
+      z-index:2;
+    }
+
+    .login-wrap{
+      display:grid;
+      grid-template-columns:1.1fr .9fr;
+      gap:28px;
+      align-items:center;
+    }
+
+    .hero{
+      text-align:center;
+      animation:floatTitle 4.5s ease-in-out infinite;
+    }
+
+    @keyframes floatTitle{
+      0%,100%{transform:translateY(0)}
+      50%{transform:translateY(-7px)}
+    }
+
+    .title{
+      margin:0 0 10px;
+      font-size:clamp(2.8rem,9vw,6.3rem);
+      font-weight:950;
+      line-height:.9;
+      letter-spacing:-4px;
+      background:linear-gradient(90deg,var(--main),var(--main2),var(--main3));
+      -webkit-background-clip:text;
+      background-clip:text;
+      -webkit-text-fill-color:transparent;
+    }
+
+    .subtitle{
+      margin:0 auto 18px;
+      max-width:620px;
+      color:var(--muted);
+      font-size:1.06rem;
+      line-height:1.6;
+    }
+
+    .pill-row{
+      display:flex;
+      justify-content:center;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.055);
+      border-radius:999px;
+      padding:7px 14px;
+      color:rgba(255,255,255,.72);
+      font-size:.86rem;
+      font-weight:750;
+      backdrop-filter:blur(18px);
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid rgba(255,255,255,.1);
+      border-radius:28px;
+      box-shadow:0 20px 80px rgba(0,0,0,.22);
+      backdrop-filter:blur(26px);
+      -webkit-backdrop-filter:blur(26px);
+      animation:fadeSlideIn .45s ease-out both;
+    }
+
+    @keyframes fadeSlideIn{
+      from{opacity:0;transform:translateY(12px)}
+      to{opacity:1;transform:translateY(0)}
+    }
+
+    .login-card{
+      padding:32px;
+      max-width:390px;
+      width:100%;
+      margin:0 auto;
+      border-color:color-mix(in srgb, var(--main) 33%, transparent);
+    }
+
+    .login-icon{
+      font-size:3rem;
+      text-align:center;
+      margin-bottom:8px;
+    }
+
+    .login-title{
+      margin:0 0 6px;
+      text-align:center;
+      font-size:1.45rem;
+      font-weight:900;
+    }
+
+    .login-small{
+      margin:0 0 18px;
+      text-align:center;
+      color:rgba(255,255,255,.36);
+      font-size:.86rem;
+      line-height:1.45;
+    }
+
+    .input{
+      width:100%;
+      background:rgba(255,255,255,.075);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:14px;
+      padding:14px 16px;
+      color:white;
+      transition:.2s;
+    }
+
+    .input:focus{
+      border-color:color-mix(in srgb, var(--main) 75%, transparent);
+      box-shadow:0 0 0 4px color-mix(in srgb, var(--main) 14%, transparent);
+    }
+
+    .input.error{
+      border-color:rgba(255,107,157,.85);
+    }
+
+    .err{
+      margin:10px 0 0;
+      color:var(--danger);
+      text-align:center;
+      font-size:.82rem;
+      font-weight:700;
+    }
+
+    .btn{
+      border:none;
+      cursor:pointer;
+      border-radius:15px;
+      padding:13px 15px;
+      color:white;
+      font-weight:900;
+      letter-spacing:.3px;
+      transition:.15s ease;
+      user-select:none;
+    }
+
+    .btn:hover{
+      transform:translateY(-1px) scale(1.01);
+      filter:brightness(1.08);
+    }
+
+    .btn:active{
+      transform:scale(.98);
+    }
+
+    .btn.primary{
+      margin-top:14px;
+      width:100%;
+      background:linear-gradient(135deg,var(--main),var(--main2));
+      box-shadow:0 8px 36px color-mix(in srgb, var(--main) 36%, transparent);
+    }
+
+    .mini-leaderboard{
+      margin-top:18px;
+      padding:18px;
+    }
+
+    .section-title{
+      margin:0 0 12px;
+      font-size:.78rem;
+      letter-spacing:2.8px;
+      text-transform:uppercase;
+      color:var(--gold);
+      font-weight:950;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    .section-title span:last-child{
+      color:rgba(255,255,255,.24);
+      letter-spacing:0;
+      text-transform:none;
+      font-size:.76rem;
+      font-weight:650;
+    }
+
+    .lb-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding:9px 10px;
+      border-radius:13px;
+      border:1px solid transparent;
+      transition:.2s;
+    }
+
+    .lb-row:hover{
+      background:rgba(255,255,255,.045);
+    }
+
+    .lb-row.me{
+      background:color-mix(in srgb, var(--main) 14%, transparent);
+      border-color:color-mix(in srgb, var(--main) 32%, transparent);
+    }
+
+    .name{
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    .count{
+      font-weight:950;
+      color:rgba(255,255,255,.62);
+      flex-shrink:0;
+    }
+
+    .game{
+      display:grid;
+      grid-template-columns:310px minmax(360px,1fr) 310px;
+      gap:18px;
+      align-items:stretch;
+      min-height:calc(100vh - 44px);
+    }
+
+    .panel{
+      padding:17px;
+      min-height:200px;
+    }
+
+    .center{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:space-between;
+      text-align:center;
+      padding:18px 8px;
+    }
+
+    .topbar{
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:8px;
+    }
+
+    .brand{
+      text-align:left;
+    }
+
+    .brand h1{
+      margin:0;
+      font-size:clamp(1.55rem,4vw,2.2rem);
+      font-weight:950;
+      letter-spacing:-1px;
+      background:linear-gradient(90deg,var(--main),var(--main2),var(--main3));
+      -webkit-background-clip:text;
+      background-clip:text;
+      -webkit-text-fill-color:transparent;
+    }
+
+    .brand p{
+      margin:3px 0 0;
+      color:rgba(255,255,255,.4);
+      font-size:.82rem;
+    }
+
+    .tiny-btn{
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.045);
+      color:rgba(255,255,255,.65);
+      border-radius:11px;
+      padding:8px 10px;
+      cursor:pointer;
+      font-size:.78rem;
+      font-weight:800;
+      transition:.15s;
+    }
+
+    .tiny-btn:hover{
+      color:white;
+      border-color:color-mix(in srgb, var(--main) 55%, transparent);
+      background:rgba(255,255,255,.075);
+    }
+
+    .quip-box{
+      height:74px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:100%;
+    }
+
+    .quip{
+      font-size:clamp(1.4rem,5vw,2.25rem);
+      font-weight:950;
+      color:var(--gold);
+      text-shadow:0 0 28px color-mix(in srgb, var(--gold) 55%, transparent);
+      animation:quipIn .8s ease-out forwards;
+      white-space:nowrap;
+    }
+
+    @keyframes quipIn{
+      0%{transform:scale(.22) rotate(-10deg);opacity:0}
+      28%{transform:scale(1.18) rotate(3deg);opacity:1}
+      75%{transform:scale(1) rotate(0deg);opacity:1}
+      100%{opacity:0}
+    }
+
+    .button-area{
+      position:relative;
+      width:310px;
+      height:310px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      margin:0 auto;
+    }
+
+    .neek-btn{
+      width:244px;
+      height:244px;
+      border-radius:50%;
+      border:3px solid rgba(255,255,255,.15);
+      background:linear-gradient(135deg,var(--main),var(--main2));
+      color:white;
+      cursor:pointer;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      box-shadow:0 0 58px color-mix(in srgb, var(--main) 50%, transparent),0 0 120px color-mix(in srgb, var(--main2) 25%, transparent),inset 0 1px 0 rgba(255,255,255,.22);
+      animation:btnGlow 2.8s ease-in-out infinite;
+      transition:transform .08s ease, filter .08s ease;
+      position:relative;
+      overflow:hidden;
+      user-select:none;
+      -webkit-user-select:none;
+      z-index:5;
+    }
+
+    .neek-btn:hover{
+      transform:scale(1.035);
+    }
+
+    .neek-btn.hit{
+      transform:scale(.88);
+      animation:none;
+      filter:brightness(1.18);
+      background:linear-gradient(135deg,#ff9200,#ff1500);
+      box-shadow:0 0 95px rgba(255,110,0,.92),0 0 190px rgba(255,30,0,.48);
+    }
+
+    @keyframes btnGlow{
+      0%,100%{box-shadow:0 0 58px color-mix(in srgb, var(--main) 50%, transparent),0 0 120px color-mix(in srgb, var(--main2) 25%, transparent),inset 0 1px 0 rgba(255,255,255,.22)}
+      50%{box-shadow:0 0 88px color-mix(in srgb, var(--main) 80%, transparent),0 0 175px color-mix(in srgb, var(--main2) 48%, transparent),inset 0 1px 0 rgba(255,255,255,.22)}
+    }
+
+    .neek-word{
+      font-size:1.8rem;
+      font-weight:950;
+      letter-spacing:3px;
+      text-shadow:0 2px 12px rgba(0,0,0,.65);
+    }
+
+    .fist{
+      font-size:3.35rem;
+      line-height:1.18;
+    }
+
+    .label{
+      font-size:.75rem;
+      letter-spacing:5px;
+      opacity:.64;
+      font-weight:750;
+      text-transform:uppercase;
+    }
+
+    .particle{
+      position:absolute;
+      top:50%;
+      left:50%;
+      font-size:1.7rem;
+      line-height:1;
+      pointer-events:none;
+      z-index:20;
+      animation:fly .78s cubic-bezier(.08,.92,.3,1) forwards;
+    }
+
+    @keyframes fly{
+      0%{transform:translate(-50%,-50%) scale(2.15) rotate(0deg);opacity:1}
+      100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(0) rotate(var(--rot));opacity:0}
+    }
+
+    .ripple{
+      position:absolute;
+      width:238px;
+      height:238px;
+      border-radius:50%;
+      border:2px solid color-mix(in srgb, var(--main) 60%, transparent);
+      pointer-events:none;
+      animation:ripple .9s cubic-bezier(0,.6,.4,1) forwards;
+    }
+
+    @keyframes ripple{
+      0%{transform:scale(.4);opacity:.7}
+      100%{transform:scale(2.65);opacity:0}
+    }
+
+    .score{
+      margin-top:8px;
+    }
+
+    .big-count{
+      font-size:clamp(2.9rem,8vw,4.25rem);
+      font-weight:950;
+      line-height:1;
+      color:var(--main);
+      animation:countBump .28s ease-out;
+    }
+
+    @keyframes countBump{
+      0%{transform:scale(1)}
+      40%{transform:scale(1.36);color:var(--gold)}
+      100%{transform:scale(1)}
+    }
+
+    .score p{
+      margin:6px 0 0;
+      color:rgba(255,255,255,.32);
+      font-size:.84rem;
+    }
+
+    .stats-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:9px;
+      width:100%;
+      max-width:460px;
+      margin-top:12px;
+    }
+
+    .stat{
+      border:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.045);
+      border-radius:15px;
+      padding:10px;
+      text-align:center;
+    }
+
+    .stat strong{
+      display:block;
+      font-size:1.1rem;
+      color:white;
+      font-weight:950;
+    }
+
+    .stat span{
+      display:block;
+      margin-top:3px;
+      font-size:.73rem;
+      color:rgba(255,255,255,.34);
+      text-transform:uppercase;
+      letter-spacing:1.4px;
+      font-weight:800;
+    }
+
+    .upgrade{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:9px;
+      align-items:center;
+      border:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.04);
+      border-radius:15px;
+      padding:11px;
+      margin-bottom:9px;
+    }
+
+    .upgrade h3{
+      margin:0 0 3px;
+      font-size:.93rem;
+      font-weight:900;
+    }
+
+    .upgrade p{
+      margin:0;
+      color:rgba(255,255,255,.36);
+      font-size:.75rem;
+      line-height:1.35;
+    }
+
+    .buy{
+      border:none;
+      border-radius:12px;
+      padding:9px 10px;
+      color:white;
+      font-weight:950;
+      background:linear-gradient(135deg,var(--main),var(--main2));
+      cursor:pointer;
+      min-width:82px;
+      box-shadow:0 5px 18px color-mix(in srgb, var(--main) 24%, transparent);
+    }
+
+    .buy:disabled{
+      cursor:not-allowed;
+      opacity:.42;
+      filter:grayscale(.35);
+    }
+
+    .ach{
+      border:1px solid rgba(255,255,255,.09);
+      border-radius:14px;
+      padding:10px;
+      margin-bottom:8px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      background:rgba(255,255,255,.035);
+      opacity:.42;
+    }
+
+    .ach.unlocked{
+      opacity:1;
+      background:color-mix(in srgb, var(--gold) 10%, transparent);
+      border-color:color-mix(in srgb, var(--gold) 25%, transparent);
+    }
+
+    .ach .aicon{
+      font-size:1.3rem;
+      width:28px;
+      text-align:center;
+    }
+
+    .ach h3{
+      margin:0;
+      font-size:.86rem;
+      font-weight:900;
+    }
+
+    .ach p{
+      margin:2px 0 0;
+      color:rgba(255,255,255,.34);
+      font-size:.73rem;
+    }
+
+    .theme-row{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+
+    .theme{
+      border:1px solid rgba(255,255,255,.12);
+      color:rgba(255,255,255,.72);
+      background:rgba(255,255,255,.04);
+      border-radius:11px;
+      padding:8px 10px;
+      font-size:.78rem;
+      cursor:pointer;
+      font-weight:800;
+    }
+
+    .theme.active{
+      border-color:var(--main);
+      color:white;
+      background:color-mix(in srgb, var(--main) 18%, transparent);
+    }
+
+    .toast{
+      position:fixed;
+      top:18px;
+      left:50%;
+      transform:translateX(-50%);
+      z-index:100;
+      background:rgba(12,10,22,.88);
+      border:1px solid color-mix(in srgb, var(--main) 45%, transparent);
+      box-shadow:0 12px 40px rgba(0,0,0,.3);
+      color:white;
+      border-radius:999px;
+      padding:10px 16px;
+      font-weight:850;
+      opacity:0;
+      pointer-events:none;
+      transition:.22s;
+      backdrop-filter:blur(18px);
+      max-width:92vw;
+      text-align:center;
+    }
+
+    .toast.show{
+      opacity:1;
+      transform:translateX(-50%) translateY(6px);
+    }
+
+    .words-cloud{
+      display:flex;
+      flex-wrap:wrap;
+      gap:7px;
+      margin-top:10px;
+      max-height:190px;
+      overflow:auto;
+      padding-right:3px;
+    }
+
+    .word-chip{
+      border:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.04);
+      color:rgba(255,255,255,.58);
+      border-radius:999px;
+      padding:5px 9px;
+      font-size:.74rem;
+      font-weight:750;
+    }
+
+    .empty{
+      text-align:center;
+      color:rgba(255,255,255,.28);
+      font-size:.86rem;
+      margin:12px 0;
+    }
+
+    @media (max-width:1050px){
+      .game{
+        grid-template-columns:1fr;
+        min-height:auto;
+      }
+
+      .center{
+        order:-1;
+      }
+
+      .panel{
+        max-width:620px;
+        width:100%;
+        margin:0 auto;
+      }
+
+      .login-wrap{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width:520px){
+      .app{
+        padding:14px;
+      }
+
+      .card,.login-card{
+        border-radius:22px;
+      }
+
+      .login-card{
+        padding:24px;
+      }
+
+      .button-area{
+        width:286px;
+        height:286px;
+      }
+
+      .neek-btn{
+        width:222px;
+        height:222px;
+      }
+
+      .stats-grid{
+        grid-template-columns:1fr 1fr;
+      }
+
+      .topbar{
+        align-items:flex-start;
+      }
+
+      .title{
+        letter-spacing:-2px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toast" id="toast"></div>
+
+  <div class="app">
+    <div class="blob one"></div>
+    <div class="blob two"></div>
+    <div class="blob three"></div>
+
+    <section class="screen" id="loginScreen">
+      <div class="login-wrap">
+        <div class="hero">
+          <h1 class="title">neekelijah.com</h1>
+          <p class="subtitle">
+            The upgraded Elijah neekification portal with combos, achievements,
+            power upgrades, 20+ roast words, themes, and a live-style leaderboard.
+          </p>
+
+          <div class="pill-row">
+            <div class="pill">💀 <span id="totalPill">0 total neeks</span></div>
+            <div class="pill">🏆 Top 20 leaderboard</div>
+            <div class="pill">⚡ Upgrade shop</div>
+            <div class="pill">🎯 Combo mode</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card login-card">
+            <div class="login-icon">🤜🤛</div>
+            <h2 class="login-title">Join the Neek Force</h2>
+            <p class="login-small">Pick a username. Your count, upgrades, and trophies save in this browser.</p>
+
+            <input id="username" class="input" maxlength="16" placeholder="your_username" autocomplete="off" autofocus />
+            <p id="error" class="err hidden"></p>
+
+            <button class="btn primary" id="startBtn">START NEEK'N 🔥</button>
+            <p class="login-small hidden" id="welcomeBack" style="margin-top:12px;color:var(--main3);font-weight:800"></p>
+          </div>
+
+          <div class="card mini-leaderboard">
+            <div class="section-title">🏆 Top Neekers <span id="loginTotal">0 total</span></div>
+            <div id="loginBoard"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen hidden" id="gameScreen">
+      <div class="game">
+        <aside class="card panel">
+          <div class="section-title">⚡ Upgrades <span id="pointsLabel">0 points</span></div>
+
+          <div class="upgrade">
+            <div>
+              <h3>👊 Punch Power <span id="powerLevel"></span></h3>
+              <p>More points every click.</p>
+            </div>
+            <button class="buy" id="buyPower"></button>
+          </div>
+
+          <div class="upgrade">
+            <div>
+              <h3>💥 Emoji Burst <span id="burstLevel"></span></h3>
+              <p>More explosion particles.</p>
+            </div>
+            <button class="buy" id="buyBurst"></button>
+          </div>
+
+          <div class="upgrade">
+            <div>
+              <h3>🎯 Combo Boost <span id="comboLevel"></span></h3>
+              <p>Bigger bonus when combos climb.</p>
+            </div>
+            <button class="buy" id="buyCombo"></button>
+          </div>
+
+          <div class="upgrade">
+            <div>
+              <h3>🤖 Auto Neek <span id="autoLevel"></span></h3>
+              <p>Earn passive neeks every few seconds.</p>
+            </div>
+            <button class="buy" id="buyAuto"></button>
+          </div>
+
+          <div class="section-title" style="margin-top:18px">🎨 Themes <span id="themeLabel">neon</span></div>
+          <div class="theme-row">
+            <button class="theme active" data-theme="neon">Neon</button>
+            <button class="theme" data-theme="fire">Fire</button>
+            <button class="theme" data-theme="ice">Ice</button>
+            <button class="theme" data-theme="toxic">Toxic</button>
+          </div>
+
+          <div class="section-title" style="margin-top:18px">🗣️ Word Bank <span>30+</span></div>
+          <div class="words-cloud" id="wordCloud"></div>
+        </aside>
+
+        <main class="center">
+          <div class="topbar">
+            <div class="brand">
+              <h1>neekelijah.com</h1>
+              <p>hey <strong id="meName"></strong> <span id="rankLine"></span></p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+              <button class="tiny-btn" id="soundBtn">🔊 sound</button>
+              <button class="tiny-btn" id="switchBtn">switch user</button>
+            </div>
+          </div>
+
+          <div class="quip-box">
+            <div class="quip hidden" id="quip"></div>
+          </div>
+
+          <div class="button-area" id="buttonArea">
+            <button class="neek-btn" id="neekBtn" aria-label="Neek Elijah button">
+              <span class="neek-word">NEEK</span>
+              <span class="fist">👊</span>
+              <span class="label">elijah</span>
+            </button>
+          </div>
+
+          <div class="score">
+            <div class="big-count" id="bigCount">0</div>
+            <p>total neeks by you</p>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat"><strong id="comboNow">0x</strong><span>combo</span></div>
+            <div class="stat"><strong id="bestCombo">0x</strong><span>best combo</span></div>
+            <div class="stat"><strong id="perClick">+1</strong><span>per click</span></div>
+            <div class="stat"><strong id="autoStat">0</strong><span>auto</span></div>
+          </div>
+        </main>
+
+        <aside class="card panel">
+          <div class="section-title">🏆 Leaderboard <span id="boardTotal">0 total</span></div>
+          <div id="gameBoard"></div>
+
+          <div class="section-title" style="margin-top:18px">🎖️ Achievements <span id="achCount">0/8</span></div>
+          <div id="achievements"></div>
+
+          <button class="tiny-btn" id="exportBtn" style="width:100%;margin-top:10px">copy save data</button>
+          <button class="tiny-btn" id="resetBtn" style="width:100%;margin-top:8px;color:rgba(255,107,157,.9)">reset my account</button>
+        </aside>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const KEY = "neekelijah_html_upgraded_v2";
+
+    const EMOJIS = [
+      "💥","⚡","🔥","✨","💫","🤣","😤","👊","💢","🎯","😂","🤙","😈","💀","🫡","😵",
+      "🤡","💸","🚀","🥶","🤯","🧨","🏆","🦾","🌪️","🛸","☄️","🍿","🗿","👑"
+    ];
+
+    const WORDS = [
+      "NEEK'D!! 💀",
+      "EZ CLAP 👊",
+      "GET REKT 😂",
+      "BOPPED!! 😤",
+      "L + RATIO 💀",
+      "BODIED!! 🔥",
+      "LMAOOOO 😭",
+      "DESTROYED 💥",
+      "NO CAP 💀",
+      "YOU COOKED 🔥",
+      "SENT IT 😵",
+      "HE'S DOWN 💀",
+      "COOKED HIM 🔥",
+      "ANOTHER ONE 😤",
+      "ABSOLUTELY FRIED 🍳",
+      "BRO GOT PACKED 📦",
+      "MAIN CHARACTER PUNCH 🎬",
+      "ELIJAH ERROR 404 🧠",
+      "SKILL ISSUE 💀",
+      "CRITICAL HIT 🎯",
+      "MEGA NEEK MODE ⚡",
+      "ONE TAP WONDER 👊",
+      "BOOM ROASTED 💥",
+      "CAUGHT IN 4K 📸",
+      "PACK WATCH 🚬",
+      "ULTRA COOKED 🔥",
+      "NEEK STORM 🌪️",
+      "COMBO DEMON 😈",
+      "GIGA BOPPED 🦾",
+      "RIP ELIJAH 🪦",
+      "NOT EVEN CLOSE 😭",
+      "ABSOLUTE CINEMA 🎥",
+      "NEEKED TO OBLIVION 🛸",
+      "MISSION COMPLETE 🫡",
+      "TOO EASY 💸",
+      "BRO VANISHED 👻"
+    ];
+
+    const ACHIEVEMENTS = [
+      { id:"first", icon:"👊", name:"First Neek", desc:"Press the button once.", test:u => u.count >= 1 },
+      { id:"twenty", icon:"🔥", name:"Warming Up", desc:"Reach 20 neeks.", test:u => u.count >= 20 },
+      { id:"fifty", icon:"💀", name:"Certified Neeker", desc:"Reach 50 neeks.", test:u => u.count >= 50 },
+      { id:"hundred", icon:"🏆", name:"Triple Digits", desc:"Reach 100 neeks.", test:u => u.count >= 100 },
+      { id:"fivehundred", icon:"👑", name:"Neek Royalty", desc:"Reach 500 neeks.", test:u => u.count >= 500 },
+      { id:"combo10", icon:"🎯", name:"Combo Starter", desc:"Hit a 10 combo.", test:u => u.bestCombo >= 10 },
+      { id:"combo25", icon:"⚡", name:"Combo Demon", desc:"Hit a 25 combo.", test:u => u.bestCombo >= 25 },
+      { id:"power5", icon:"🦾", name:"Heavy Hands", desc:"Upgrade punch power to level 5.", test:u => u.upgrades.power >= 5 }
+    ];
+
+    const defaultUser = () => ({
+      count:0,
+      bestCombo:0,
+      createdAt:Date.now(),
+      lastSeen:Date.now(),
+      upgrades:{ power:1, burst:1, combo:1, auto:0 },
+      achievements:{},
+      theme:"neon"
+    });
+
+    let state = {
+      page:"login",
+      me:"",
+      users:{},
+      combo:0,
+      lastClick:0,
+      sound:true,
+      saveTimer:null,
+      autoTimer:null
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function medal(i){
+      return i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+    }
+
+    function compact(n){
+      return Number(n || 0).toLocaleString();
+    }
+
+    function getCost(type){
+      const u = currentUser();
+      const level = u.upgrades[type] || 0;
+      if(type === "power") return Math.floor(20 * Math.pow(1.72, level - 1));
+      if(type === "burst") return Math.floor(35 * Math.pow(1.68, level - 1));
+      if(type === "combo") return Math.floor(45 * Math.pow(1.7, level - 1));
+      if(type === "auto") return Math.floor(120 * Math.pow(1.85, level));
+      return 999999;
+    }
+
+    function currentUser(){
+      if(!state.users[state.me]) state.users[state.me] = defaultUser();
+      normalizeUser(state.users[state.me]);
+      return state.users[state.me];
+    }
+
+    function normalizeUser(user){
+      if(typeof user === "number"){
+        return user;
+      }
+      user.count = Number(user.count || 0);
+      user.bestCombo = Number(user.bestCombo || 0);
+      user.createdAt = user.createdAt || Date.now();
+      user.lastSeen = Date.now();
+      user.upgrades = user.upgrades || {};
+      user.upgrades.power = Math.max(1, Number(user.upgrades.power || 1));
+      user.upgrades.burst = Math.max(1, Number(user.upgrades.burst || 1));
+      user.upgrades.combo = Math.max(1, Number(user.upgrades.combo || 1));
+      user.upgrades.auto = Math.max(0, Number(user.upgrades.auto || 0));
+      user.achievements = user.achievements || {};
+      user.theme = user.theme || "neon";
+    }
+
+    function normalizeAll(obj){
+      const fixed = {};
+      Object.entries(obj || {}).forEach(([name, value]) => {
+        if(typeof value === "number"){
+          const u = defaultUser();
+          u.count = value;
+          fixed[name] = u;
+        } else {
+          normalizeUser(value);
+          fixed[name] = value;
+        }
+      });
+      return fixed;
+    }
+
+    async function load(){
+      try{
+        if(window.storage && window.storage.get){
+          const r = await window.storage.get(KEY, true);
+          state.users = r ? normalizeAll(JSON.parse(r.value)) : {};
+        } else {
+          state.users = normalizeAll(JSON.parse(localStorage.getItem(KEY) || "{}"));
+        }
+      } catch(e){
+        state.users = {};
+      }
+      render();
+    }
+
+    async function save(){
+      try{
+        const value = JSON.stringify(state.users);
+        if(window.storage && window.storage.set){
+          await window.storage.set(KEY, value, true);
+        } else {
+          localStorage.setItem(KEY, value);
+        }
+      } catch(e){}
+    }
+
+    function scheduleSave(){
+      clearTimeout(state.saveTimer);
+      state.saveTimer = setTimeout(save, 120);
+    }
+
+    function board(){
+      return Object.entries(state.users)
+        .map(([name, user]) => {
+          if(typeof user === "number"){
+            const u = defaultUser();
+            u.count = user;
+            state.users[name] = u;
+            user = u;
+          }
+          normalizeUser(user);
+          return [name, user];
+        })
+        .sort((a,b) => b[1].count - a[1].count)
+        .slice(0, 20);
+    }
+
+    function total(){
+      return Object.values(state.users).reduce((sum, user) => {
+        if(typeof user === "number") return sum + user;
+        return sum + Number(user.count || 0);
+      }, 0);
+    }
+
+    function showToast(msg){
+      const t = $("toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.classList.remove("show"), 1700);
+    }
+
+    function beep(){
+      if(!state.sound) return;
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.value = 180 + Math.random() * 180;
+        gain.gain.value = .035;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + .08);
+        osc.stop(ctx.currentTime + .09);
+      } catch(e){}
+    }
+
+    function login(){
+      const input = $("username");
+      const n = input.value.trim();
+      const err = $("error");
+      input.classList.remove("error");
+      err.classList.add("hidden");
+
+      if(!n){
+        input.classList.add("error");
+        err.textContent = "⚠️ Pick a username!";
+        err.classList.remove("hidden");
+        return;
+      }
+
+      if(n.length < 2){
+        input.classList.add("error");
+        err.textContent = "⚠️ At least 2 characters!";
+        err.classList.remove("hidden");
+        return;
+      }
+
+      if(n.length > 16){
+        input.classList.add("error");
+        err.textContent = "⚠️ Max 16 characters!";
+        err.classList.remove("hidden");
+        return;
+      }
+
+      if(!state.users[n]) state.users[n] = defaultUser();
+      normalizeUser(state.users[n]);
+      state.me = n;
+      state.page = "game";
+      state.combo = 0;
+      applyTheme(currentUser().theme);
+      scheduleSave();
+      startAuto();
+      render();
+      showToast(`Welcome ${n} 👊`);
+    }
+
+    function switchUser(){
+      state.page = "login";
+      state.me = "";
+      state.combo = 0;
+      clearInterval(state.autoTimer);
+      $("username").value = "";
+      render();
+    }
+
+    function addNeeks(amount, silent=false){
+      const u = currentUser();
+      u.count += amount;
+      checkAchievements();
+      scheduleSave();
+      if(!silent) render();
+    }
+
+    function perClick(){
+      const u = currentUser();
+      const base = u.upgrades.power || 1;
+      const comboBonus = Math.floor(state.combo / 10) * (u.upgrades.combo || 1);
+      return base + comboBonus;
+    }
+
+    function handleNeek(){
+      const now = Date.now();
+      if(now - state.lastClick < 950) state.combo += 1;
+      else state.combo = 1;
+      state.lastClick = now;
+
+      const u = currentUser();
+      u.bestCombo = Math.max(u.bestCombo || 0, state.combo);
+
+      const amount = perClick();
+      u.count += amount;
+
+      explode();
+      showQuip();
+      beep();
+      checkAchievements();
+      scheduleSave();
+      render();
+    }
+
+    function explode(){
+      const area = $("buttonArea");
+      const btn = $("neekBtn");
+      btn.classList.add("hit");
+      setTimeout(() => btn.classList.remove("hit"), 110);
+
+      const rip = document.createElement("div");
+      rip.className = "ripple";
+      area.appendChild(rip);
+      setTimeout(() => rip.remove(), 900);
+
+      const u = currentUser();
+      const particleCount = 10 + (u.upgrades.burst * 4);
+
+      for(let i = 0; i < particleCount; i++){
+        const p = document.createElement("span");
+        const angle = (i / particleCount) * Math.PI * 2 + (Math.random() - .5) * .5;
+        const distance = 90 + Math.random() * 125;
+        p.className = "particle";
+        p.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+        p.style.setProperty("--dx", `${Math.round(Math.cos(angle) * distance)}px`);
+        p.style.setProperty("--dy", `${Math.round(Math.sin(angle) * distance)}px`);
+        p.style.setProperty("--rot", `${Math.round((Math.random() - .5) * 720)}deg`);
+        area.appendChild(p);
+        setTimeout(() => p.remove(), 850);
+      }
+    }
+
+    function showQuip(){
+      const q = $("quip");
+      q.textContent = WORDS[Math.floor(Math.random() * WORDS.length)];
+      q.classList.remove("hidden");
+      q.style.animation = "none";
+      q.offsetHeight;
+      q.style.animation = "";
+      clearTimeout(q._timer);
+      q._timer = setTimeout(() => q.classList.add("hidden"), 780);
+    }
+
+    function buy(type){
+      const u = currentUser();
+      const cost = getCost(type);
+
+      if(u.count < cost){
+        showToast(`Need ${compact(cost - u.count)} more neeks 💸`);
+        return;
+      }
+
+      if(type !== "auto" && u.upgrades[type] >= 20){
+        showToast("Max level reached 👑");
+        return;
+      }
+
+      if(type === "auto" && u.upgrades.auto >= 10){
+        showToast("Auto Neek maxed 🤖");
+        return;
+      }
+
+      u.count -= cost;
+      u.upgrades[type] += 1;
+      checkAchievements();
+      scheduleSave();
+      startAuto();
+      render();
+      showToast(`${type.toUpperCase()} upgraded ⚡`);
+    }
+
+    function startAuto(){
+      clearInterval(state.autoTimer);
+      if(state.page !== "game" || !state.me) return;
+      state.autoTimer = setInterval(() => {
+        const u = currentUser();
+        const auto = u.upgrades.auto || 0;
+        if(auto > 0){
+          u.count += auto;
+          checkAchievements();
+          scheduleSave();
+          render();
+        }
+      }, 5000);
+    }
+
+    function checkAchievements(){
+      if(!state.me) return;
+      const u = currentUser();
+      let unlocked = [];
+      ACHIEVEMENTS.forEach(a => {
+        if(!u.achievements[a.id] && a.test(u)){
+          u.achievements[a.id] = Date.now();
+          unlocked.push(a.name);
+        }
+      });
+      if(unlocked.length) showToast(`Achievement: ${unlocked[0]} 🎖️`);
+    }
+
+    function resetMe(){
+      if(!state.me) return;
+      const ok = confirm("Reset this username's neeks, upgrades, and achievements?");
+      if(!ok) return;
+      state.users[state.me] = defaultUser();
+      state.combo = 0;
+      scheduleSave();
+      startAuto();
+      render();
+      showToast("Account reset");
+    }
+
+    function exportData(){
+      const text = JSON.stringify(state.users, null, 2);
+      navigator.clipboard?.writeText(text).then(
+        () => showToast("Save data copied 📋"),
+        () => showToast("Copy failed")
+      );
+    }
+
+    function applyTheme(theme){
+      document.body.classList.remove("fire","ice","toxic");
+      if(theme && theme !== "neon") document.body.classList.add(theme);
+    }
+
+    function setTheme(theme){
+      const u = currentUser();
+      u.theme = theme;
+      applyTheme(theme);
+      scheduleSave();
+      render();
+    }
+
+    function renderBoard(target, limit=10){
+      const rows = board().slice(0, limit);
+      if(!rows.length){
+        target.innerHTML = `<p class="empty">No neekers yet 😔</p>`;
+        return;
+      }
+
+      target.innerHTML = rows.map(([name, user], i) => `
+        <div class="lb-row ${name === state.me ? "me" : ""}">
+          <span class="name">${medal(i)} ${escapeHtml(name)} ${name === state.me ? '<span style="color:var(--main);font-size:.68rem;font-weight:900">◄ you</span>' : ''}</span>
+          <span class="count" style="color:${i === 0 ? 'var(--gold)' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : 'rgba(255,255,255,.52)'}">${compact(user.count)}</span>
+        </div>
+      `).join("");
+    }
+
+    function renderAchievements(){
+      const u = currentUser();
+      const unlocked = ACHIEVEMENTS.filter(a => u.achievements[a.id]).length;
+      $("achCount").textContent = `${unlocked}/${ACHIEVEMENTS.length}`;
+
+      $("achievements").innerHTML = ACHIEVEMENTS.map(a => `
+        <div class="ach ${u.achievements[a.id] ? "unlocked" : ""}">
+          <div class="aicon">${a.icon}</div>
+          <div>
+            <h3>${a.name}</h3>
+            <p>${a.desc}</p>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderWords(){
+      $("wordCloud").innerHTML = WORDS.map(w => `<span class="word-chip">${escapeHtml(w)}</span>`).join("");
+    }
+
+    function render(){
+      $("loginScreen").classList.toggle("hidden", state.page !== "login");
+      $("gameScreen").classList.toggle("hidden", state.page !== "game");
+
+      const t = total();
+      $("totalPill").textContent = `${compact(t)} total neeks`;
+      $("loginTotal").textContent = `${compact(t)} total`;
+
+      renderBoard($("loginBoard"), 6);
+
+      const input = $("username");
+      const name = input.value.trim();
+      const welcome = $("welcomeBack");
+      if(state.users[name] && name.length >= 2 && state.page === "login"){
+        const u = typeof state.users[name] === "number" ? {count:state.users[name]} : state.users[name];
+        welcome.textContent = `👋 Welcome back — you have ${compact(u.count)} neeks!`;
+        welcome.classList.remove("hidden");
+      } else {
+        welcome.classList.add("hidden");
+      }
+
+      if(state.page !== "game" || !state.me) return;
+
+      const u = currentUser();
+      applyTheme(u.theme);
+
+      $("meName").textContent = state.me;
+      const rows = board();
+      const rank = rows.findIndex(([name]) => name === state.me);
+      $("rankLine").textContent = rank !== -1 ? `· rank ${medal(rank)}` : "";
+      $("bigCount").textContent = compact(u.count);
+      $("pointsLabel").textContent = `${compact(u.count)} points`;
+      $("boardTotal").textContent = `${compact(t)} total`;
+
+      $("comboNow").textContent = `${state.combo}x`;
+      $("bestCombo").textContent = `${u.bestCombo || 0}x`;
+      $("perClick").textContent = `+${perClick()}`;
+      $("autoStat").textContent = `${u.upgrades.auto || 0}/5 sec`;
+
+      $("powerLevel").textContent = `Lv.${u.upgrades.power}`;
+      $("burstLevel").textContent = `Lv.${u.upgrades.burst}`;
+      $("comboLevel").textContent = `Lv.${u.upgrades.combo}`;
+      $("autoLevel").textContent = `Lv.${u.upgrades.auto}`;
+
+      setupBuyButton("buyPower","power",u.upgrades.power >= 20);
+      setupBuyButton("buyBurst","burst",u.upgrades.burst >= 20);
+      setupBuyButton("buyCombo","combo",u.upgrades.combo >= 20);
+      setupBuyButton("buyAuto","auto",u.upgrades.auto >= 10);
+
+      $("themeLabel").textContent = u.theme;
+      document.querySelectorAll(".theme").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.theme === u.theme);
+      });
+
+      $("soundBtn").textContent = state.sound ? "🔊 sound" : "🔇 muted";
+
+      renderBoard($("gameBoard"), 20);
+      renderAchievements();
+      renderWords();
+    }
+
+    function setupBuyButton(id,type,maxed){
+      const b = $(id);
+      if(maxed){
+        b.textContent = "MAX";
+        b.disabled = true;
+        return;
+      }
+      const c = getCost(type);
+      b.textContent = `${compact(c)} 💸`;
+      b.disabled = currentUser().count < c;
+    }
+
+    function escapeHtml(str){
+      return String(str)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    $("startBtn").addEventListener("click", login);
+    $("username").addEventListener("keydown", e => {
+      if(e.key === "Enter") login();
+    });
+    $("username").addEventListener("input", () => {
+      $("error").classList.add("hidden");
+      $("username").classList.remove("error");
+      render();
+    });
+    $("neekBtn").addEventListener("click", handleNeek);
+    $("switchBtn").addEventListener("click", switchUser);
+    $("resetBtn").addEventListener("click", resetMe);
+    $("exportBtn").addEventListener("click", exportData);
+    $("soundBtn").addEventListener("click", () => {
+      state.sound = !state.sound;
+      render();
+    });
+
+    $("buyPower").addEventListener("click", () => buy("power"));
+    $("buyBurst").addEventListener("click", () => buy("burst"));
+    $("buyCombo").addEventListener("click", () => buy("combo"));
+    $("buyAuto").addEventListener("click", () => buy("auto"));
+
+    document.querySelectorAll(".theme").forEach(btn => {
+      btn.addEventListener("click", () => setTheme(btn.dataset.theme));
+    });
+
+    window.addEventListener("beforeunload", save);
+
+    load();
+  </script>
+</body>
+</html>
