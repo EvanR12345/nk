@@ -349,6 +349,58 @@
       border-color:color-mix(in srgb, var(--main) 32%, transparent);
     }
 
+    .leaderboard-list{
+      max-height:430px;
+      overflow-y:auto;
+      scrollbar-width:thin;
+      scrollbar-color:color-mix(in srgb, var(--main) 45%, transparent) transparent;
+    }
+
+    .world-card{
+      width:100%;
+      max-width:520px;
+      padding:14px 16px;
+      margin:8px 0 12px;
+      border:1px solid color-mix(in srgb, var(--main3) 32%, transparent);
+      border-radius:18px;
+      background:rgba(255,255,255,.045);
+      text-align:left;
+    }
+
+    .world-head{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      font-size:.85rem;
+      font-weight:900;
+    }
+
+    .world-head span:last-child{
+      color:var(--gold);
+    }
+
+    .world-track{
+      height:8px;
+      margin:9px 0 7px;
+      overflow:hidden;
+      border-radius:999px;
+      background:rgba(255,255,255,.08);
+    }
+
+    .world-fill{
+      height:100%;
+      width:0;
+      border-radius:inherit;
+      background:linear-gradient(90deg,var(--main),var(--main2),var(--main3));
+      transition:width .25s ease;
+    }
+
+    .world-next{
+      color:rgba(255,255,255,.43);
+      font-size:.74rem;
+      line-height:1.35;
+    }
+
     .name{
       overflow:hidden;
       text-overflow:ellipsis;
@@ -840,13 +892,13 @@
         <div class="hero">
           <h1 class="title">neekelijah.com</h1>
           <p class="subtitle">
-            The upgraded Elijah neekification portal with combos, achievements,
-            power upgrades, 20+ roast words, themes, and a live-style leaderboard.
+            The harder Elijah neekification challenge with 100 upgrade levels,
+            100 worlds, combos, achievements, themes, and a global leaderboard.
           </p>
 
           <div class="pill-row">
             <div class="pill">💀 <span id="totalPill">0 total neeks</span></div>
-            <div class="pill">🏆 Top 20 leaderboard</div>
+            <div class="pill">🌍 Everyone leaderboard</div>
             <div class="pill">⚡ Upgrade shop</div>
             <div class="pill">🎯 Combo mode</div>
           </div>
@@ -856,7 +908,7 @@
           <div class="card login-card">
             <div class="login-icon">🤜🤛</div>
             <h2 class="login-title">Join the Neek Force</h2>
-            <p class="login-small">Pick a username. Your count, upgrades, and trophies save in this browser.</p>
+            <p class="login-small">Pick a username. Your progress saves, and the shared leaderboard is visible to everyone.</p>
 
             <input id="username" class="input" maxlength="16" placeholder="your_username" autocomplete="off" autofocus />
             <p id="error" class="err hidden"></p>
@@ -867,7 +919,7 @@
 
           <div class="card mini-leaderboard">
             <div class="section-title">🏆 Top Neekers <span id="loginTotal">0 total</span></div>
-            <div id="loginBoard"></div>
+            <div id="loginBoard" class="leaderboard-list"></div>
           </div>
         </div>
       </div>
@@ -876,7 +928,7 @@
     <section class="screen hidden" id="gameScreen">
       <div class="game">
         <aside class="card panel">
-          <div class="section-title">⚡ Upgrades <span id="pointsLabel">0 points</span></div>
+          <div class="section-title">⚡ Upgrades · 100 levels <span id="pointsLabel">0 points</span></div>
 
           <div class="upgrade">
             <div>
@@ -948,7 +1000,13 @@
 
           <div class="score">
             <div class="big-count" id="bigCount">0</div>
-            <p>total neeks by you</p>
+            <p>lifetime neeks by you</p>
+          </div>
+
+          <div class="world-card">
+            <div class="world-head"><span id="worldName">🌌 World 1 · Neon Alley</span><span id="worldNumber">1/100</span></div>
+            <div class="world-track"><div class="world-fill" id="worldFill"></div></div>
+            <div class="world-next" id="worldNext">Keep neeking to reach the next world.</div>
           </div>
 
           <div class="stats-grid">
@@ -960,10 +1018,10 @@
         </main>
 
         <aside class="card panel">
-          <div class="section-title">🏆 Leaderboard <span id="boardTotal">0 total</span></div>
-          <div id="gameBoard"></div>
+          <div class="section-title">🌍 Everyone Leaderboard <span id="boardTotal">0 total</span></div>
+          <div id="gameBoard" class="leaderboard-list"></div>
 
-          <div class="section-title" style="margin-top:18px">🎖️ Achievements <span id="achCount">0/8</span></div>
+          <div class="section-title" style="margin-top:18px">🎖️ Achievements <span id="achCount">0/12</span></div>
           <div id="achievements"></div>
 
           <button class="tiny-btn" id="exportBtn" style="width:100%;margin-top:10px">copy save data</button>
@@ -974,7 +1032,10 @@
   </div>
 
   <script>
-    const KEY = "neekelijah_html_upgraded_v2";
+    const KEY = "neekelijah_html_upgraded_v3";
+    const LEGACY_KEY = "neekelijah_html_upgraded_v2";
+    const MAX_LEVEL = 100;
+    const MAX_WORLD = 100;
 
     const EMOJIS = [
       "💥","⚡","🔥","✨","💫","🤣","😤","👊","💢","🎯","😂","🤙","😈","💀","🫡","😵",
@@ -1021,18 +1082,24 @@
     ];
 
     const ACHIEVEMENTS = [
-      { id:"first", icon:"👊", name:"First Neek", desc:"Press the button once.", test:u => u.count >= 1 },
-      { id:"twenty", icon:"🔥", name:"Warming Up", desc:"Reach 20 neeks.", test:u => u.count >= 20 },
-      { id:"fifty", icon:"💀", name:"Certified Neeker", desc:"Reach 50 neeks.", test:u => u.count >= 50 },
-      { id:"hundred", icon:"🏆", name:"Triple Digits", desc:"Reach 100 neeks.", test:u => u.count >= 100 },
-      { id:"fivehundred", icon:"👑", name:"Neek Royalty", desc:"Reach 500 neeks.", test:u => u.count >= 500 },
+      { id:"first", icon:"👊", name:"First Neek", desc:"Press the button once.", test:u => u.lifetime >= 1 },
+      { id:"twenty", icon:"🔥", name:"Warming Up", desc:"Reach 20 neeks.", test:u => u.lifetime >= 20 },
+      { id:"fifty", icon:"💀", name:"Certified Neeker", desc:"Reach 50 neeks.", test:u => u.lifetime >= 50 },
+      { id:"hundred", icon:"🏆", name:"Triple Digits", desc:"Reach 100 neeks.", test:u => u.lifetime >= 100 },
+      { id:"fivehundred", icon:"👑", name:"Neek Royalty", desc:"Reach 500 neeks.", test:u => u.lifetime >= 500 },
       { id:"combo10", icon:"🎯", name:"Combo Starter", desc:"Hit a 10 combo.", test:u => u.bestCombo >= 10 },
       { id:"combo25", icon:"⚡", name:"Combo Demon", desc:"Hit a 25 combo.", test:u => u.bestCombo >= 25 },
-      { id:"power5", icon:"🦾", name:"Heavy Hands", desc:"Upgrade punch power to level 5.", test:u => u.upgrades.power >= 5 }
+      { id:"power5", icon:"🦾", name:"Heavy Hands", desc:"Upgrade punch power to level 5.", test:u => u.upgrades.power >= 5 },
+      { id:"world10", icon:"🌍", name:"World Walker", desc:"Reach World 10.", test:u => u.world >= 10 },
+      { id:"world50", icon:"🚀", name:"Dimension Breaker", desc:"Reach World 50.", test:u => u.world >= 50 },
+      { id:"world100", icon:"🌌", name:"Final Boss", desc:"Conquer all 100 worlds.", test:u => u.world >= 100 },
+      { id:"upgrade100", icon:"💯", name:"Perfect Upgrade", desc:"Raise any upgrade to level 100.", test:u => Object.values(u.upgrades).some(level => level >= 100) }
     ];
 
     const defaultUser = () => ({
       count:0,
+      lifetime:0,
+      world:1,
       bestCombo:0,
       createdAt:Date.now(),
       lastSeen:Date.now(),
@@ -1049,7 +1116,9 @@
       lastClick:0,
       sound:true,
       saveTimer:null,
-      autoTimer:null
+      autoTimer:null,
+      syncTimer:null,
+      storageMode:"local"
     };
 
     const $ = (id) => document.getElementById(id);
@@ -1065,11 +1134,35 @@
     function getCost(type){
       const u = currentUser();
       const level = u.upgrades[type] || 0;
-      if(type === "power") return Math.floor(20 * Math.pow(1.72, level - 1));
-      if(type === "burst") return Math.floor(35 * Math.pow(1.68, level - 1));
-      if(type === "combo") return Math.floor(45 * Math.pow(1.7, level - 1));
-      if(type === "auto") return Math.floor(120 * Math.pow(1.85, level));
-      return 999999;
+      const bases = { power:45, burst:70, combo:95, auto:220 };
+      const growth = { power:1.16, burst:1.15, combo:1.165, auto:1.18 };
+      return Math.floor(bases[type] * Math.pow(growth[type], Math.max(0, level - (type === "auto" ? 0 : 1))));
+    }
+
+    function worldRequirement(world){
+      if(world <= 1) return 0;
+      return Math.floor(125 * Math.pow(world - 1, 2.35));
+    }
+
+    function worldFor(lifetime){
+      let low = 1;
+      let high = MAX_WORLD;
+      while(low < high){
+        const mid = Math.ceil((low + high) / 2);
+        if(lifetime >= worldRequirement(mid)) low = mid;
+        else high = mid - 1;
+      }
+      return low;
+    }
+
+    function worldTitle(world){
+      const places = ["Neon Alley","Fire District","Frozen Grid","Toxic Terminal","Void Arena","Chaos Citadel","Cosmic Core","Legend Realm","Titan Sector","Final Dimension"];
+      const tier = Math.min(places.length - 1, Math.floor((world - 1) / 10));
+      return places[tier];
+    }
+
+    function worldMultiplier(user){
+      return 1 + Math.floor((user.world - 1) / 10);
     }
 
     function currentUser(){
@@ -1083,14 +1176,16 @@
         return user;
       }
       user.count = Number(user.count || 0);
+      user.lifetime = Math.max(user.count, Number(user.lifetime ?? user.count));
+      user.world = worldFor(user.lifetime);
       user.bestCombo = Number(user.bestCombo || 0);
       user.createdAt = user.createdAt || Date.now();
       user.lastSeen = Date.now();
       user.upgrades = user.upgrades || {};
-      user.upgrades.power = Math.max(1, Number(user.upgrades.power || 1));
-      user.upgrades.burst = Math.max(1, Number(user.upgrades.burst || 1));
-      user.upgrades.combo = Math.max(1, Number(user.upgrades.combo || 1));
-      user.upgrades.auto = Math.max(0, Number(user.upgrades.auto || 0));
+      user.upgrades.power = Math.min(MAX_LEVEL, Math.max(1, Number(user.upgrades.power || 1)));
+      user.upgrades.burst = Math.min(MAX_LEVEL, Math.max(1, Number(user.upgrades.burst || 1)));
+      user.upgrades.combo = Math.min(MAX_LEVEL, Math.max(1, Number(user.upgrades.combo || 1)));
+      user.upgrades.auto = Math.min(MAX_LEVEL, Math.max(0, Number(user.upgrades.auto || 0)));
       user.achievements = user.achievements || {};
       user.theme = user.theme || "neon";
     }
@@ -1114,25 +1209,49 @@
       try{
         if(window.storage && window.storage.get){
           const r = await window.storage.get(KEY, true);
-          state.users = r ? normalizeAll(JSON.parse(r.value)) : {};
+          const legacy = r ? null : await window.storage.get(LEGACY_KEY, true);
+          state.users = normalizeAll(JSON.parse((r || legacy)?.value || "{}"));
+          state.storageMode = "global";
         } else {
-          state.users = normalizeAll(JSON.parse(localStorage.getItem(KEY) || "{}"));
+          const saved = localStorage.getItem(KEY) || localStorage.getItem(LEGACY_KEY) || "{}";
+          state.users = normalizeAll(JSON.parse(saved));
+          state.storageMode = "local";
         }
       } catch(e){
         state.users = {};
       }
+      startLeaderboardSync();
       render();
     }
 
     async function save(){
       try{
-        const value = JSON.stringify(state.users);
         if(window.storage && window.storage.set){
-          await window.storage.set(KEY, value, true);
+          const latest = await window.storage.get(KEY, true);
+          const merged = latest ? normalizeAll(JSON.parse(latest.value)) : {};
+          if(state.me && state.users[state.me]) merged[state.me] = state.users[state.me];
+          else Object.assign(merged, state.users);
+          state.users = merged;
+          await window.storage.set(KEY, JSON.stringify(state.users), true);
         } else {
-          localStorage.setItem(KEY, value);
+          localStorage.setItem(KEY, JSON.stringify(state.users));
         }
       } catch(e){}
+    }
+
+    function startLeaderboardSync(){
+      clearInterval(state.syncTimer);
+      if(state.storageMode !== "global") return;
+      state.syncTimer = setInterval(async () => {
+        try{
+          const latest = await window.storage.get(KEY, true);
+          if(!latest) return;
+          const mine = state.me ? state.users[state.me] : null;
+          state.users = normalizeAll(JSON.parse(latest.value));
+          if(state.me && mine) state.users[state.me] = mine;
+          render();
+        } catch(e){}
+      }, 8000);
     }
 
     function scheduleSave(){
@@ -1152,14 +1271,13 @@
           normalizeUser(user);
           return [name, user];
         })
-        .sort((a,b) => b[1].count - a[1].count)
-        .slice(0, 20);
+        .sort((a,b) => b[1].lifetime - a[1].lifetime);
     }
 
     function total(){
       return Object.values(state.users).reduce((sum, user) => {
         if(typeof user === "number") return sum + user;
-        return sum + Number(user.count || 0);
+        return sum + Number(user.lifetime ?? user.count ?? 0);
       }, 0);
     }
 
@@ -1240,6 +1358,8 @@
     function addNeeks(amount, silent=false){
       const u = currentUser();
       u.count += amount;
+      u.lifetime += amount;
+      updateWorld(u);
       checkAchievements();
       scheduleSave();
       if(!silent) render();
@@ -1248,13 +1368,13 @@
     function perClick(){
       const u = currentUser();
       const base = u.upgrades.power || 1;
-      const comboBonus = Math.floor(state.combo / 10) * (u.upgrades.combo || 1);
-      return base + comboBonus;
+      const comboBonus = Math.floor(state.combo / 15) * Math.ceil((u.upgrades.combo || 1) / 2);
+      return (base + comboBonus) * worldMultiplier(u);
     }
 
     function handleNeek(){
       const now = Date.now();
-      if(now - state.lastClick < 950) state.combo += 1;
+      if(now - state.lastClick < 650) state.combo += 1;
       else state.combo = 1;
       state.lastClick = now;
 
@@ -1263,6 +1383,8 @@
 
       const amount = perClick();
       u.count += amount;
+      u.lifetime += amount;
+      updateWorld(u);
 
       explode();
       showQuip();
@@ -1284,7 +1406,7 @@
       setTimeout(() => rip.remove(), 900);
 
       const u = currentUser();
-      const particleCount = 10 + (u.upgrades.burst * 4);
+      const particleCount = Math.min(70, 10 + Math.ceil(Math.sqrt(u.upgrades.burst) * 6));
 
       for(let i = 0; i < particleCount; i++){
         const p = document.createElement("span");
@@ -1320,13 +1442,8 @@
         return;
       }
 
-      if(type !== "auto" && u.upgrades[type] >= 20){
-        showToast("Max level reached 👑");
-        return;
-      }
-
-      if(type === "auto" && u.upgrades.auto >= 10){
-        showToast("Auto Neek maxed 🤖");
+      if(u.upgrades[type] >= MAX_LEVEL){
+        showToast("Level 100 reached 👑");
         return;
       }
 
@@ -1339,6 +1456,14 @@
       showToast(`${type.toUpperCase()} upgraded ⚡`);
     }
 
+    function updateWorld(user){
+      const previous = user.world || 1;
+      user.world = worldFor(user.lifetime);
+      if(user.world > previous){
+        showToast(`World ${user.world} unlocked 🌍`);
+      }
+    }
+
     function startAuto(){
       clearInterval(state.autoTimer);
       if(state.page !== "game" || !state.me) return;
@@ -1346,7 +1471,10 @@
         const u = currentUser();
         const auto = u.upgrades.auto || 0;
         if(auto > 0){
-          u.count += auto;
+          const amount = auto * worldMultiplier(u);
+          u.count += amount;
+          u.lifetime += amount;
+          updateWorld(u);
           checkAchievements();
           scheduleSave();
           render();
@@ -1410,7 +1538,7 @@
       target.innerHTML = rows.map(([name, user], i) => `
         <div class="lb-row ${name === state.me ? "me" : ""}">
           <span class="name">${medal(i)} ${escapeHtml(name)} ${name === state.me ? '<span style="color:var(--main);font-size:.68rem;font-weight:900">◄ you</span>' : ''}</span>
-          <span class="count" style="color:${i === 0 ? 'var(--gold)' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : 'rgba(255,255,255,.52)'}">${compact(user.count)}</span>
+          <span class="count" style="color:${i === 0 ? 'var(--gold)' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : 'rgba(255,255,255,.52)'}">${compact(user.lifetime)}</span>
         </div>
       `).join("");
     }
@@ -1443,14 +1571,14 @@
       $("totalPill").textContent = `${compact(t)} total neeks`;
       $("loginTotal").textContent = `${compact(t)} total`;
 
-      renderBoard($("loginBoard"), 6);
+      renderBoard($("loginBoard"), Infinity);
 
       const input = $("username");
       const name = input.value.trim();
       const welcome = $("welcomeBack");
       if(state.users[name] && name.length >= 2 && state.page === "login"){
         const u = typeof state.users[name] === "number" ? {count:state.users[name]} : state.users[name];
-        welcome.textContent = `👋 Welcome back — you have ${compact(u.count)} neeks!`;
+        welcome.textContent = `👋 Welcome back — you have ${compact(u.lifetime ?? u.count)} lifetime neeks!`;
         welcome.classList.remove("hidden");
       } else {
         welcome.classList.add("hidden");
@@ -1465,24 +1593,35 @@
       const rows = board();
       const rank = rows.findIndex(([name]) => name === state.me);
       $("rankLine").textContent = rank !== -1 ? `· rank ${medal(rank)}` : "";
-      $("bigCount").textContent = compact(u.count);
+      $("bigCount").textContent = compact(u.lifetime);
       $("pointsLabel").textContent = `${compact(u.count)} points`;
       $("boardTotal").textContent = `${compact(t)} total`;
 
       $("comboNow").textContent = `${state.combo}x`;
       $("bestCombo").textContent = `${u.bestCombo || 0}x`;
       $("perClick").textContent = `+${perClick()}`;
-      $("autoStat").textContent = `${u.upgrades.auto || 0}/5 sec`;
+      $("autoStat").textContent = `${(u.upgrades.auto || 0) * worldMultiplier(u)}/5 sec`;
+
+      const nextWorld = Math.min(MAX_WORLD, u.world + 1);
+      const currentReq = worldRequirement(u.world);
+      const nextReq = worldRequirement(nextWorld);
+      const progress = u.world >= MAX_WORLD ? 100 : Math.max(0, Math.min(100, ((u.lifetime - currentReq) / (nextReq - currentReq)) * 100));
+      $("worldName").textContent = `🌌 World ${u.world} · ${worldTitle(u.world)}`;
+      $("worldNumber").textContent = `${u.world}/${MAX_WORLD} · ${worldMultiplier(u)}x power`;
+      $("worldFill").style.width = `${progress}%`;
+      $("worldNext").textContent = u.world >= MAX_WORLD
+        ? "All 100 worlds conquered. You are the final boss."
+        : `${compact(nextReq - u.lifetime)} lifetime neeks until World ${nextWorld}.`;
 
       $("powerLevel").textContent = `Lv.${u.upgrades.power}`;
       $("burstLevel").textContent = `Lv.${u.upgrades.burst}`;
       $("comboLevel").textContent = `Lv.${u.upgrades.combo}`;
       $("autoLevel").textContent = `Lv.${u.upgrades.auto}`;
 
-      setupBuyButton("buyPower","power",u.upgrades.power >= 20);
-      setupBuyButton("buyBurst","burst",u.upgrades.burst >= 20);
-      setupBuyButton("buyCombo","combo",u.upgrades.combo >= 20);
-      setupBuyButton("buyAuto","auto",u.upgrades.auto >= 10);
+      setupBuyButton("buyPower","power",u.upgrades.power >= MAX_LEVEL);
+      setupBuyButton("buyBurst","burst",u.upgrades.burst >= MAX_LEVEL);
+      setupBuyButton("buyCombo","combo",u.upgrades.combo >= MAX_LEVEL);
+      setupBuyButton("buyAuto","auto",u.upgrades.auto >= MAX_LEVEL);
 
       $("themeLabel").textContent = u.theme;
       document.querySelectorAll(".theme").forEach(btn => {
@@ -1491,7 +1630,7 @@
 
       $("soundBtn").textContent = state.sound ? "🔊 sound" : "🔇 muted";
 
-      renderBoard($("gameBoard"), 20);
+      renderBoard($("gameBoard"), Infinity);
       renderAchievements();
       renderWords();
     }
