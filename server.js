@@ -47,7 +47,8 @@ function cleanUser(value, name) {
       Object.entries(achievements).slice(0, 100).map(([key, unlockedAt]) => [String(key).slice(0, 40), Number(unlockedAt) || Date.now()])
     ),
     theme: ["neon", "fire", "ice", "toxic"].includes(value.theme) ? value.theme : "neon",
-    notation: value.notation === "scientific" ? "scientific" : "standard"
+    notation: value.notation === "scientific" ? "scientific" : "standard",
+    hideLevels: value.hideLevels === true
   };
 }
 

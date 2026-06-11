@@ -28,7 +28,8 @@ const player = lifetime => ({
   upgrades: { power: 2, burst: 3, combo: 4, auto: 1 },
   achievements: { first: Date.now() },
   theme: "fire",
-  notation: "standard"
+  notation: "standard",
+  hideLevels: false
 });
 
 test("leaderboard changes are visible to separate clients", async () => {
@@ -96,11 +97,13 @@ test("scientific notation and the uncapped jjh-only exponent upgrade are normali
       body: JSON.stringify({
         ...player(100000),
         notation: "scientific",
+        hideLevels: true,
         upgrades: { ...player(0).upgrades, exponent: "900719925474099312345678901234567890" }
       })
     });
     const secretUser = await secretResponse.json();
     assert.equal(secretUser.notation, "scientific");
+    assert.equal(secretUser.hideLevels, true);
     assert.equal(secretUser.upgrades.exponent, "900719925474099312345678901234567890");
 
     const regularResponse = await fetch(`${base}/api/leaderboard/Alice`, {

@@ -1006,6 +1006,13 @@
             </div>
             <button class="tiny-btn" id="notationBtn">off</button>
           </div>
+          <div class="setting-row">
+            <div>
+              <strong>Hide upgrade levels</strong>
+              <span>Hide every Lv. label in the upgrade shop.</span>
+            </div>
+            <button class="tiny-btn" id="hideLevelsBtn">off</button>
+          </div>
 
           <div class="section-title" style="margin-top:18px">🎨 Themes <span id="themeLabel">neon</span></div>
           <div class="theme-row">
@@ -1153,7 +1160,8 @@
       upgrades:{ power:1, burst:1, combo:1, auto:0, exponent:"0" },
       achievements:{},
       theme:"neon",
-      notation:"standard"
+      notation:"standard",
+      hideLevels:false
     });
 
     let state = {
@@ -1277,6 +1285,7 @@
       user.achievements = user.achievements || {};
       user.theme = user.theme || "neon";
       user.notation = user.notation === "scientific" ? "scientific" : "standard";
+      user.hideLevels = user.hideLevels === true;
     }
 
     function normalizeAll(obj){
@@ -1546,9 +1555,17 @@
       const comboBonus = Math.floor(state.combo / 15) * Math.ceil((u.upgrades.combo || 1) / 2);
       const rawPower = BigInt((base + comboBonus) * worldMultiplier(u));
       if(!isSecretUser() || rawPower <= 1n) return rawPower.toString();
-      const exponentLevel = BigInt(normalizeExponentLevel(u.upgrades.exponent));
-      if(exponentLevel > 100000n) return (scoreValue(u.lifetime) + 1n).toString();
-      return (rawPower ** (exponentLevel + 1n)).toString();
+
+      const exponent = BigInt(normalizeExponentLevel(u.upgrades.exponent)) + 1n;
+      const estimatedDigits = Number(exponent <= 1000000n ? exponent : 1000001n) * Math.log10(Number(rawPower));
+      if(estimatedDigits <= 10000){
+        return (rawPower ** exponent).toString();
+      }
+
+      // Once a direct power would be too large to build safely, every click squares
+      // the current scale. Growth remains exponential without imposing a score cap.
+      const currentScale = scoreValue(u.lifetime) > rawPower ? scoreValue(u.lifetime) : rawPower;
+      return (currentScale * currentScale).toString();
     }
 
     function perClick(){
@@ -1761,6 +1778,13 @@
       render();
     }
 
+    function toggleLevelVisibility(){
+      const u = currentUser();
+      u.hideLevels = !u.hideLevels;
+      scheduleSave();
+      render();
+    }
+
     function renderBoard(target, limit=10){
       const rows = board().slice(0, limit);
       if(!rows.length){
@@ -1856,6 +1880,9 @@
       $("comboLevel").textContent = `Lv.${u.upgrades.combo}`;
       $("autoLevel").textContent = `Lv.${u.upgrades.auto}`;
       $("exponentLevel").textContent = `Lv.${u.upgrades.exponent}`;
+      ["powerLevel","burstLevel","comboLevel","autoLevel","exponentLevel"].forEach(id => {
+        $(id).classList.toggle("hidden", u.hideLevels);
+      });
       $("exponentUpgrade").classList.toggle("hidden", !isSecretUser());
 
       setupBuyButton("buyPower","power",u.upgrades.power >= MAX_LEVEL);
@@ -1869,6 +1896,8 @@
 
       $("notationBtn").textContent = u.notation === "scientific" ? "on" : "off";
       $("notationBtn").classList.toggle("active", u.notation === "scientific");
+      $("hideLevelsBtn").textContent = u.hideLevels ? "on" : "off";
+      $("hideLevelsBtn").classList.toggle("active", u.hideLevels);
       $("themeLabel").textContent = u.theme;
       document.querySelectorAll(".theme").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.theme === u.theme);
@@ -1931,6 +1960,7 @@
     $("buyExponent").addEventListener("click", () => buy("exponent"));
     $("buyExponentMax").addEventListener("click", buyExponentMax);
     $("notationBtn").addEventListener("click", toggleNotation);
+    $("hideLevelsBtn").addEventListener("click", toggleLevelVisibility);
 
     document.querySelectorAll(".theme").forEach(btn => {
       btn.addEventListener("click", () => setTheme(btn.dataset.theme));
