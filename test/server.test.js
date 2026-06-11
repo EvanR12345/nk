@@ -5,7 +5,8 @@ const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
-const { createServer, localNetworkUrls, normalizeScore, MAX_SCORE_DIGITS } = require("../server");
+const { createServer, localNetworkUrls } = require("../server");
+const { normalizeScore, compareScores, addScores, subtractScores, powerOfWhole } = require("../score");
 
 async function withServer(run) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "neek-leaderboard-"));
@@ -214,26 +215,43 @@ test("local network URLs include only external IPv4 addresses", () => {
 });
 
 
-test("scores larger than the browser-safe limit are saturated", () => {
-  const oversized = "8".repeat(MAX_SCORE_DIGITS + 1);
-  const normalized = normalizeScore(oversized);
+test("multi-million-digit scientific scores stay compact", () => {
+  assert.equal(normalizeScore("1.5e+3000000"), "1.5e+3000000");
+  assert.equal(compareScores("1.5e+3000000", "9.9e+2999999"), 1);
+  assert.equal(addScores("1.5e+3000000", "1e+3000000"), "2.5e+3000000");
+  assert.equal(subtractScores("1.5e+3000000", "5e+2999999"), "1e+3000000");
 
-  assert.equal(normalized.length, MAX_SCORE_DIGITS);
-  assert.equal(normalized, "9".repeat(MAX_SCORE_DIGITS));
+  const enormousExponent = "1.25e+999999999999999999999999999999";
+  assert.equal(normalizeScore(enormousExponent), enormousExponent);
+  assert.equal(compareScores(enormousExponent, "9.99e+3000000"), 1);
 });
 
-test("API bounds oversized scores before returning them to clients", async () => {
+test("powers beyond millions of digits use compact scientific notation", () => {
+  const result = powerOfWhole(10n, 3000001n);
+  assert.equal(result, "1e+3000001");
+  assert.ok(result.length < 32);
+});
+
+test("API preserves compact scientific scores", async () => {
   await withServer(async base => {
-    const oversized = "8".repeat(MAX_SCORE_DIGITS + 1);
     const response = await fetch(`${base}/api/leaderboard/Giant`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...player(0), count: oversized, lifetime: oversized })
+      body: JSON.stringify({ ...player(0), count: "1.5e+3000000", lifetime: "1.5e+3000000" })
     });
     const user = await response.json();
 
     assert.equal(response.status, 200);
-    assert.equal(user.count.length, MAX_SCORE_DIGITS);
-    assert.equal(user.lifetime.length, MAX_SCORE_DIGITS);
+    assert.equal(user.count, "1.5e+3000000");
+    assert.equal(user.lifetime, "1.5e+3000000");
+  });
+});
+
+test("score math browser asset is served", async () => {
+  await withServer(async base => {
+    const response = await fetch(`${base}/score.js`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /text\/javascript/);
+    assert.match(await response.text(), /powerOfWhole/);
   });
 });

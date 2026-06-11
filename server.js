@@ -5,6 +5,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const os = require("node:os");
 const { URL } = require("node:url");
+const { normalizeScore, compareScores } = require("./score");
 
 const ROOT = __dirname;
 const DEFAULT_DATA_FILE = path.join(ROOT, "data", "leaderboard.json");
@@ -35,7 +36,7 @@ function cleanUser(value, name) {
   const achievements = value.achievements && typeof value.achievements === "object" ? value.achievements : {};
   const count = normalizeScore(value.count);
   const suppliedLifetime = normalizeScore(value.lifetime ?? count);
-  const lifetime = BigInt(suppliedLifetime) >= BigInt(count) ? suppliedLifetime : count;
+  const lifetime = compareScores(suppliedLifetime, count) >= 0 ? suppliedLifetime : count;
 
   return {
     count,
@@ -141,11 +142,15 @@ function createServer(options = {}) {
 
       if (req.method !== "GET" && req.method !== "HEAD") return json(res, 405, { error: "Method not allowed" });
       const requested = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
-      const file = path.resolve(ROOT, requested);
-      if (file !== path.join(ROOT, "index.html")) return json(res, 404, { error: "Not found" });
+      const publicFiles = new Map([
+        ["index.html", "text/html; charset=utf-8"],
+        ["score.js", "text/javascript; charset=utf-8"]
+      ]);
+      if (!publicFiles.has(requested)) return json(res, 404, { error: "Not found" });
+      const file = path.join(ROOT, requested);
       const content = await fs.readFile(file);
       res.writeHead(200, {
-        "Content-Type": "text/html; charset=utf-8",
+        "Content-Type": publicFiles.get(requested),
         "Content-Length": content.length,
         "Cache-Control": "no-cache",
         "X-Content-Type-Options": "nosniff"
@@ -181,4 +186,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, cleanUser, validUsername, localNetworkUrls, normalizeScore, MAX_SCORE_DIGITS };
+module.exports = { createServer, cleanUser, validUsername, localNetworkUrls };

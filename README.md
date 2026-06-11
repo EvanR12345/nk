@@ -2,6 +2,8 @@
 
 A dependency-free browser clicker with persistent, cross-device progress and a shared leaderboard.
 
+Scores use compact scientific notation once they become very large. Values such as `1.5e+3000000` remain small in memory and can be saved, synchronized, compared, and increased without constructing millions of digits in the browser.
+
 ## Run locally
 
 Node.js 20 or newer is required.
