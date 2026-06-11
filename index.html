@@ -1088,6 +1088,8 @@
     const KEY = "neekelijah_html_upgraded_v3";
     const LEGACY_KEY = "neekelijah_html_upgraded_v2";
     const MAX_WORLD = 100;
+    const MAX_SCORE_DIGITS = 10000;
+    const MAX_SCORE = "9".repeat(MAX_SCORE_DIGITS);
     const LEADERBOARD_API = "/api/leaderboard";
 
     const EMOJIS = [
@@ -1449,7 +1451,8 @@
     }
 
     function total(){
-      return Object.values(state.users).reduce((sum, user) => {
+      let sum = "0";
+      for(const user of Object.values(state.users)){
         const value = typeof user === "number" ? user : user.lifetime ?? user.count ?? 0;
         return addScoreValues(sum, value);
       }, "0");
