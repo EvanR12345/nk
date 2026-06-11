@@ -477,10 +477,11 @@
       transition:.15s;
     }
 
-    .tiny-btn:hover{
+    .tiny-btn:hover,
+    .tiny-btn.active{
       color:white;
       border-color:color-mix(in srgb, var(--main) 55%, transparent);
-      background:rgba(255,255,255,.075);
+      background:color-mix(in srgb, var(--main) 16%, transparent);
     }
 
     .quip-box{
@@ -708,6 +709,30 @@
       filter:grayscale(.35);
     }
 
+    .setting-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      border:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.04);
+      border-radius:15px;
+      padding:11px;
+      margin-top:10px;
+    }
+
+    .setting-row strong{
+      display:block;
+      font-size:.86rem;
+    }
+
+    .setting-row span{
+      display:block;
+      margin-top:3px;
+      color:rgba(255,255,255,.36);
+      font-size:.72rem;
+    }
+
     .ach{
       border:1px solid rgba(255,255,255,.09);
       border-radius:14px;
@@ -892,7 +917,7 @@
         <div class="hero">
           <h1 class="title">neekelijah.com</h1>
           <p class="subtitle">
-            The harder Elijah neekification challenge with 100 upgrade levels,
+            The harder Elijah neekification challenge with uncapped upgrade levels,
             100 worlds, combos, achievements, themes, and a global leaderboard.
           </p>
 
@@ -928,7 +953,7 @@
     <section class="screen hidden" id="gameScreen">
       <div class="game">
         <aside class="card panel">
-          <div class="section-title">⚡ Upgrades · 100 levels <span id="pointsLabel">0 points</span></div>
+          <div class="section-title">⚡ Upgrades · uncapped <span id="pointsLabel">0 points</span></div>
 
           <div class="upgrade">
             <div>
@@ -960,6 +985,33 @@
               <p>Earn passive neeks every few seconds.</p>
             </div>
             <button class="buy" id="buyAuto"></button>
+          </div>
+
+          <div class="upgrade hidden" id="exponentUpgrade">
+            <div>
+              <h3>🧪 Exponentiation <span id="exponentLevel"></span></h3>
+              <p>Secret jjh tech with no level cap and very cheap upgrades.</p>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="buy" id="buyExponent"></button>
+              <button class="buy" id="buyExponentMax">MAX</button>
+            </div>
+          </div>
+
+          <div class="section-title" style="margin-top:18px">⚙️ Settings <span>display</span></div>
+          <div class="setting-row">
+            <div>
+              <strong>Scientific notation</strong>
+              <span>Show numbers like 1.23e+05.</span>
+            </div>
+            <button class="tiny-btn" id="notationBtn">off</button>
+          </div>
+          <div class="setting-row">
+            <div>
+              <strong>Hide upgrade levels</strong>
+              <span>Hide every Lv. label in the upgrade shop.</span>
+            </div>
+            <button class="tiny-btn" id="hideLevelsBtn">off</button>
           </div>
 
           <div class="section-title" style="margin-top:18px">🎨 Themes <span id="themeLabel">neon</span></div>
@@ -1034,7 +1086,6 @@
   <script>
     const KEY = "neekelijah_html_upgraded_v3";
     const LEGACY_KEY = "neekelijah_html_upgraded_v2";
-    const MAX_LEVEL = 100;
     const MAX_WORLD = 100;
     const LEADERBOARD_API = "/api/leaderboard";
 
@@ -1083,30 +1134,32 @@
     ];
 
     const ACHIEVEMENTS = [
-      { id:"first", icon:"👊", name:"First Neek", desc:"Press the button once.", test:u => u.lifetime >= 1 },
-      { id:"twenty", icon:"🔥", name:"Warming Up", desc:"Reach 20 neeks.", test:u => u.lifetime >= 20 },
-      { id:"fifty", icon:"💀", name:"Certified Neeker", desc:"Reach 50 neeks.", test:u => u.lifetime >= 50 },
-      { id:"hundred", icon:"🏆", name:"Triple Digits", desc:"Reach 100 neeks.", test:u => u.lifetime >= 100 },
-      { id:"fivehundred", icon:"👑", name:"Neek Royalty", desc:"Reach 500 neeks.", test:u => u.lifetime >= 500 },
+      { id:"first", icon:"👊", name:"First Neek", desc:"Press the button once.", test:u => scoreAtLeast(u.lifetime, 1) },
+      { id:"twenty", icon:"🔥", name:"Warming Up", desc:"Reach 20 neeks.", test:u => scoreAtLeast(u.lifetime, 20) },
+      { id:"fifty", icon:"💀", name:"Certified Neeker", desc:"Reach 50 neeks.", test:u => scoreAtLeast(u.lifetime, 50) },
+      { id:"hundred", icon:"🏆", name:"Triple Digits", desc:"Reach 100 neeks.", test:u => scoreAtLeast(u.lifetime, 100) },
+      { id:"fivehundred", icon:"👑", name:"Neek Royalty", desc:"Reach 500 neeks.", test:u => scoreAtLeast(u.lifetime, 500) },
       { id:"combo10", icon:"🎯", name:"Combo Starter", desc:"Hit a 10 combo.", test:u => u.bestCombo >= 10 },
       { id:"combo25", icon:"⚡", name:"Combo Demon", desc:"Hit a 25 combo.", test:u => u.bestCombo >= 25 },
-      { id:"power5", icon:"🦾", name:"Heavy Hands", desc:"Upgrade punch power to level 5.", test:u => u.upgrades.power >= 5 },
+      { id:"power5", icon:"🦾", name:"Heavy Hands", desc:"Upgrade punch power to level 5.", test:u => scoreAtLeast(u.upgrades.power, 5) },
       { id:"world10", icon:"🌍", name:"World Walker", desc:"Reach World 10.", test:u => u.world >= 10 },
       { id:"world50", icon:"🚀", name:"Dimension Breaker", desc:"Reach World 50.", test:u => u.world >= 50 },
       { id:"world100", icon:"🌌", name:"Final Boss", desc:"Conquer all 100 worlds.", test:u => u.world >= 100 },
-      { id:"upgrade100", icon:"💯", name:"Perfect Upgrade", desc:"Raise any upgrade to level 100.", test:u => Object.values(u.upgrades).some(level => level >= 100) }
+      { id:"upgrade100", icon:"💯", name:"Perfect Upgrade", desc:"Raise any upgrade to level 100.", test:u => Object.values(u.upgrades).some(level => scoreAtLeast(level, 100)) }
     ];
 
     const defaultUser = () => ({
-      count:0,
-      lifetime:0,
+      count:"0",
+      lifetime:"0",
       world:1,
       bestCombo:0,
       createdAt:Date.now(),
       lastSeen:Date.now(),
-      upgrades:{ power:1, burst:1, combo:1, auto:0 },
+      upgrades:{ power:"1", burst:"1", combo:"1", auto:"0", exponent:"0" },
       achievements:{},
-      theme:"neon"
+      theme:"neon",
+      notation:"standard",
+      hideLevels:false
     });
 
     let state = {
@@ -1135,16 +1188,46 @@
       return i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
     }
 
+    function isSecretUser(name=state.me){
+      return name === "jjh";
+    }
+
+    function normalizeWholeNumber(value){
+      if(typeof value === "number" && Number.isFinite(value) && value >= 0){
+        return BigInt(Math.floor(value)).toString();
+      }
+      const text = String(value ?? "0").trim();
+      if(!/^\d+$/.test(text)) return "0";
+      return text.replace(/^0+(?=\d)/, "");
+    }
+
+    const normalizeExponentLevel = normalizeWholeNumber;
+    const scoreValue = value => BigInt(normalizeWholeNumber(value));
+    const scoreAtLeast = (value, minimum) => scoreValue(value) >= BigInt(minimum);
+    const compareScores = (a, b) => scoreValue(a) < scoreValue(b) ? -1 : scoreValue(a) > scoreValue(b) ? 1 : 0;
+
+    function scientific(n){
+      const digits = normalizeWholeNumber(n);
+      if(digits === "0") return "0.00e+00";
+      const coefficient = `${digits[0]}.${(digits.slice(1, 3) + "00").slice(0, 2)}`;
+      return `${coefficient}e+${String(digits.length - 1).padStart(2, "0")}`;
+    }
+
     function compact(n){
-      return Number(n || 0).toLocaleString();
+      const digits = normalizeWholeNumber(n);
+      const user = state.me && state.users[state.me];
+      if(user && user.notation === "scientific") return scientific(digits);
+      if(digits.length > 30) return scientific(digits);
+      return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
 
     function getCost(type){
       const u = currentUser();
-      const level = u.upgrades[type] || 0;
-      const bases = { power:45, burst:70, combo:95, auto:220 };
-      const growth = { power:1.16, burst:1.15, combo:1.165, auto:1.18 };
-      return Math.floor(bases[type] * Math.pow(growth[type], Math.max(0, level - (type === "auto" ? 0 : 1))));
+      if(type === "exponent") return "10";
+      const level = scoreValue(u.upgrades[type]);
+      const bases = { power:45n, burst:70n, combo:95n, auto:220n };
+      const startingLevel = type === "auto" ? 0n : 1n;
+      return (bases[type] * (level - startingLevel + 1n)).toString();
     }
 
     function worldRequirement(world){
@@ -1157,7 +1240,7 @@
       let high = MAX_WORLD;
       while(low < high){
         const mid = Math.ceil((low + high) / 2);
-        if(lifetime >= worldRequirement(mid)) low = mid;
+        if(scoreAtLeast(lifetime, worldRequirement(mid))) low = mid;
         else high = mid - 1;
       }
       return low;
@@ -1179,23 +1262,28 @@
       return state.users[state.me];
     }
 
-    function normalizeUser(user){
+    function normalizeUser(user, name=state.me){
       if(typeof user === "number"){
         return user;
       }
-      user.count = Number(user.count || 0);
-      user.lifetime = Math.max(user.count, Number(user.lifetime ?? user.count));
+      user.count = normalizeWholeNumber(user.count);
+      user.lifetime = compareScores(user.lifetime ?? user.count, user.count) >= 0
+        ? normalizeWholeNumber(user.lifetime ?? user.count)
+        : user.count;
       user.world = worldFor(user.lifetime);
       user.bestCombo = Number(user.bestCombo || 0);
       user.createdAt = user.createdAt || Date.now();
       user.lastSeen = Number(user.lastSeen || user.createdAt);
       user.upgrades = user.upgrades || {};
-      user.upgrades.power = Math.min(MAX_LEVEL, Math.max(1, Number(user.upgrades.power || 1)));
-      user.upgrades.burst = Math.min(MAX_LEVEL, Math.max(1, Number(user.upgrades.burst || 1)));
-      user.upgrades.combo = Math.min(MAX_LEVEL, Math.max(1, Number(user.upgrades.combo || 1)));
-      user.upgrades.auto = Math.min(MAX_LEVEL, Math.max(0, Number(user.upgrades.auto || 0)));
+      user.upgrades.power = scoreAtLeast(user.upgrades.power, 1) ? normalizeWholeNumber(user.upgrades.power) : "1";
+      user.upgrades.burst = scoreAtLeast(user.upgrades.burst, 1) ? normalizeWholeNumber(user.upgrades.burst) : "1";
+      user.upgrades.combo = scoreAtLeast(user.upgrades.combo, 1) ? normalizeWholeNumber(user.upgrades.combo) : "1";
+      user.upgrades.auto = normalizeWholeNumber(user.upgrades.auto);
+      user.upgrades.exponent = isSecretUser(name) ? normalizeExponentLevel(user.upgrades.exponent) : "0";
       user.achievements = user.achievements || {};
       user.theme = user.theme || "neon";
+      user.notation = user.notation === "scientific" ? "scientific" : "standard";
+      user.hideLevels = user.hideLevels === true;
     }
 
     function normalizeAll(obj){
@@ -1203,10 +1291,11 @@
       Object.entries(obj || {}).forEach(([name, value]) => {
         if(typeof value === "number"){
           const u = defaultUser();
-          u.count = value;
+          u.count = normalizeWholeNumber(value);
+          u.lifetime = u.count;
           fixed[name] = u;
         } else {
-          normalizeUser(value);
+          normalizeUser(value, name);
           fixed[name] = value;
         }
       });
@@ -1226,7 +1315,7 @@
       const merged = { ...local };
       Object.entries(remote || {}).forEach(([name, user]) => {
         const localUser = merged[name];
-        if(!localUser || Number(user.lifetime || 0) >= Number(localUser.lifetime || 0)){
+        if(!localUser || compareScores(user.lifetime, localUser.lifetime) >= 0){
           merged[name] = user;
         }
       });
@@ -1294,7 +1383,7 @@
         state.users = mergeUsers(localUsers(), remote);
         if(state.me && mine){
           const serverMine = remote[state.me];
-          state.users[state.me] = !serverMine || mine.lifetime >= serverMine.lifetime ? mine : serverMine;
+          state.users[state.me] = !serverMine || compareScores(mine.lifetime, serverMine.lifetime) >= 0 ? mine : serverMine;
         }
         state.storageMode = "global";
         render();
@@ -1342,17 +1431,17 @@
             state.users[name] = u;
             user = u;
           }
-          normalizeUser(user);
+          normalizeUser(user, name);
           return [name, user];
         })
-        .sort((a,b) => b[1].lifetime - a[1].lifetime);
+        .sort((a,b) => compareScores(b[1].lifetime, a[1].lifetime));
     }
 
     function total(){
       return Object.values(state.users).reduce((sum, user) => {
-        if(typeof user === "number") return sum + user;
-        return sum + Number(user.lifetime ?? user.count ?? 0);
-      }, 0);
+        const value = typeof user === "number" ? user : user.lifetime ?? user.count ?? 0;
+        return sum + scoreValue(value);
+      }, 0n).toString();
     }
 
     function showToast(msg){
@@ -1424,7 +1513,7 @@
       }
 
       if(!state.users[n]) state.users[n] = defaultUser();
-      normalizeUser(state.users[n]);
+      normalizeUser(state.users[n], n);
       state.me = n;
       state.page = "game";
       state.users[n].lastSeen = Date.now();
@@ -1447,18 +1536,36 @@
 
     function addNeeks(amount, silent=false){
       const u = currentUser();
-      u.count += amount;
-      u.lifetime += amount;
+      addPoints(u, amount);
       updateWorld(u);
       checkAchievements();
       scheduleSave();
       if(!silent) render();
     }
 
+    function addPoints(user, amount){
+      user.count = (scoreValue(user.count) + scoreValue(amount)).toString();
+      user.lifetime = (scoreValue(user.lifetime) + scoreValue(amount)).toString();
+    }
+
     function perClickFor(u){
-      const base = u.upgrades.power || 1;
-      const comboBonus = Math.floor(state.combo / 15) * Math.ceil((u.upgrades.combo || 1) / 2);
-      return (base + comboBonus) * worldMultiplier(u);
+      const base = scoreValue(u.upgrades.power);
+      const comboTiers = BigInt(Math.floor(state.combo / 15));
+      const comboLevel = scoreValue(u.upgrades.combo);
+      const comboBonus = comboTiers * ((comboLevel + 1n) / 2n);
+      const rawPower = (base + comboBonus) * BigInt(worldMultiplier(u));
+      if(!isSecretUser() || rawPower <= 1n) return rawPower.toString();
+
+      const exponent = BigInt(normalizeExponentLevel(u.upgrades.exponent)) + 1n;
+      const estimatedDigits = Number(exponent <= 1000000n ? exponent : 1000001n) * Math.log10(Number(rawPower));
+      if(estimatedDigits <= 10000){
+        return (rawPower ** exponent).toString();
+      }
+
+      // Once a direct power would be too large to build safely, every click squares
+      // the current scale. Growth remains exponential without imposing a score cap.
+      const currentScale = scoreValue(u.lifetime) > rawPower ? scoreValue(u.lifetime) : rawPower;
+      return (currentScale * currentScale).toString();
     }
 
     function perClick(){
@@ -1475,8 +1582,7 @@
       const u = state.users[state.me];
       u.bestCombo = Math.max(u.bestCombo || 0, state.combo);
       const amount = perClickFor(u);
-      u.count += amount;
-      u.lifetime += amount;
+      addPoints(u, amount);
       u.lastSeen = now;
       state.pendingClicks += 1;
 
@@ -1522,7 +1628,8 @@
       setTimeout(() => rip.remove(), 900);
 
       const u = state.users[state.me];
-      const particleCount = Math.min(16, 6 + Math.ceil(Math.sqrt(u.upgrades.burst) * 2));
+      const burstLevel = scoreValue(u.upgrades.burst);
+      const particleCount = burstLevel >= 25n ? 16 : Math.min(16, 6 + Math.ceil(Math.sqrt(Number(burstLevel)) * 2));
       const fragment = document.createDocumentFragment();
 
       for(let i = 0; i < particleCount; i++){
@@ -1552,26 +1659,37 @@
     }
 
     function buy(type){
+      if(type === "exponent" && !isSecretUser()) return;
       const u = currentUser();
       const cost = getCost(type);
 
-      if(u.count < cost){
-        showToast(`Need ${compact(cost - u.count)} more neeks 💸`);
+      if(scoreValue(u.count) < BigInt(cost)){
+        showToast(`Need ${compact((BigInt(cost) - scoreValue(u.count)).toString())} more neeks 💸`);
         return;
       }
 
-      if(u.upgrades[type] >= MAX_LEVEL){
-        showToast("Level 100 reached 👑");
-        return;
-      }
-
-      u.count -= cost;
-      u.upgrades[type] += 1;
+      u.count = (scoreValue(u.count) - BigInt(cost)).toString();
+      u.upgrades[type] = (scoreValue(u.upgrades[type]) + 1n).toString();
       checkAchievements();
       scheduleSave();
       startAuto();
       render();
       showToast(`${type.toUpperCase()} upgraded ⚡`);
+    }
+
+    function buyExponentMax(){
+      if(!isSecretUser()) return;
+      const u = currentUser();
+      const purchases = scoreValue(u.count) / 10n;
+      if(purchases === 0n){
+        showToast("Need 10 neeks for MAX 🧪");
+        return;
+      }
+      u.count = (scoreValue(u.count) % 10n).toString();
+      u.upgrades.exponent = (BigInt(normalizeExponentLevel(u.upgrades.exponent)) + purchases).toString();
+      scheduleSave();
+      render();
+      showToast(`${compact(purchases.toString())} exponent levels bought 🧪`);
     }
 
     function updateWorld(user){
@@ -1587,11 +1705,10 @@
       if(state.page !== "game" || !state.me) return;
       state.autoTimer = setInterval(() => {
         const u = currentUser();
-        const auto = u.upgrades.auto || 0;
-        if(auto > 0){
-          const amount = auto * worldMultiplier(u);
-          u.count += amount;
-          u.lifetime += amount;
+        const auto = scoreValue(u.upgrades.auto);
+        if(auto > 0n){
+          const amount = auto * BigInt(worldMultiplier(u));
+          addPoints(u, amount);
           updateWorld(u);
           checkAchievements();
           scheduleSave();
@@ -1642,6 +1759,20 @@
       const u = currentUser();
       u.theme = theme;
       applyTheme(theme);
+      scheduleSave();
+      render();
+    }
+
+    function toggleNotation(){
+      const u = currentUser();
+      u.notation = u.notation === "scientific" ? "standard" : "scientific";
+      scheduleSave();
+      render();
+    }
+
+    function toggleLevelVisibility(){
+      const u = currentUser();
+      u.hideLevels = !u.hideLevels;
       scheduleSave();
       render();
     }
@@ -1721,30 +1852,44 @@
 
       $("comboNow").textContent = `${state.combo}x`;
       $("bestCombo").textContent = `${u.bestCombo || 0}x`;
-      $("perClick").textContent = `+${perClick()}`;
-      $("autoStat").textContent = `${(u.upgrades.auto || 0) * worldMultiplier(u)}/5 sec`;
+      $("perClick").textContent = `+${compact(perClick())}`;
+      $("autoStat").textContent = `${compact((scoreValue(u.upgrades.auto) * BigInt(worldMultiplier(u))).toString())}/5 sec`;
 
       const nextWorld = Math.min(MAX_WORLD, u.world + 1);
       const currentReq = worldRequirement(u.world);
       const nextReq = worldRequirement(nextWorld);
-      const progress = u.world >= MAX_WORLD ? 100 : Math.max(0, Math.min(100, ((u.lifetime - currentReq) / (nextReq - currentReq)) * 100));
+      const lifetimeForWorld = Number(scoreValue(u.lifetime) > BigInt(nextReq) ? BigInt(nextReq) : scoreValue(u.lifetime));
+      const progress = u.world >= MAX_WORLD ? 100 : Math.max(0, Math.min(100, ((lifetimeForWorld - currentReq) / (nextReq - currentReq)) * 100));
       $("worldName").textContent = `🌌 World ${u.world} · ${worldTitle(u.world)}`;
       $("worldNumber").textContent = `${u.world}/${MAX_WORLD} · ${worldMultiplier(u)}x power`;
       $("worldFill").style.width = `${progress}%`;
       $("worldNext").textContent = u.world >= MAX_WORLD
         ? "All 100 worlds conquered. You are the final boss."
-        : `${compact(nextReq - u.lifetime)} lifetime neeks until World ${nextWorld}.`;
+        : `${compact((BigInt(nextReq) - scoreValue(u.lifetime)).toString())} lifetime neeks until World ${nextWorld}.`;
 
       $("powerLevel").textContent = `Lv.${u.upgrades.power}`;
       $("burstLevel").textContent = `Lv.${u.upgrades.burst}`;
       $("comboLevel").textContent = `Lv.${u.upgrades.combo}`;
       $("autoLevel").textContent = `Lv.${u.upgrades.auto}`;
+      $("exponentLevel").textContent = `Lv.${u.upgrades.exponent}`;
+      ["powerLevel","burstLevel","comboLevel","autoLevel","exponentLevel"].forEach(id => {
+        $(id).classList.toggle("hidden", u.hideLevels);
+      });
+      $("exponentUpgrade").classList.toggle("hidden", !isSecretUser());
 
-      setupBuyButton("buyPower","power",u.upgrades.power >= MAX_LEVEL);
-      setupBuyButton("buyBurst","burst",u.upgrades.burst >= MAX_LEVEL);
-      setupBuyButton("buyCombo","combo",u.upgrades.combo >= MAX_LEVEL);
-      setupBuyButton("buyAuto","auto",u.upgrades.auto >= MAX_LEVEL);
+      setupBuyButton("buyPower","power");
+      setupBuyButton("buyBurst","burst");
+      setupBuyButton("buyCombo","combo");
+      setupBuyButton("buyAuto","auto");
+      if(isSecretUser()){
+        setupBuyButton("buyExponent","exponent");
+        $("buyExponentMax").disabled = scoreValue(u.count) < 10n;
+      }
 
+      $("notationBtn").textContent = u.notation === "scientific" ? "on" : "off";
+      $("notationBtn").classList.toggle("active", u.notation === "scientific");
+      $("hideLevelsBtn").textContent = u.hideLevels ? "on" : "off";
+      $("hideLevelsBtn").classList.toggle("active", u.hideLevels);
       $("themeLabel").textContent = u.theme;
       document.querySelectorAll(".theme").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.theme === u.theme);
@@ -1761,16 +1906,11 @@
       renderWords();
     }
 
-    function setupBuyButton(id,type,maxed){
+    function setupBuyButton(id,type){
       const b = $(id);
-      if(maxed){
-        b.textContent = "MAX";
-        b.disabled = true;
-        return;
-      }
       const c = getCost(type);
       b.textContent = `${compact(c)} 💸`;
-      b.disabled = currentUser().count < c;
+      b.disabled = scoreValue(currentUser().count) < BigInt(c);
     }
 
     function escapeHtml(str){
@@ -1804,6 +1944,10 @@
     $("buyBurst").addEventListener("click", () => buy("burst"));
     $("buyCombo").addEventListener("click", () => buy("combo"));
     $("buyAuto").addEventListener("click", () => buy("auto"));
+    $("buyExponent").addEventListener("click", () => buy("exponent"));
+    $("buyExponentMax").addEventListener("click", buyExponentMax);
+    $("notationBtn").addEventListener("click", toggleNotation);
+    $("hideLevelsBtn").addEventListener("click", toggleLevelVisibility);
 
     document.querySelectorAll(".theme").forEach(btn => {
       btn.addEventListener("click", () => setTheme(btn.dataset.theme));
