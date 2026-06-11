@@ -5,7 +5,7 @@ const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
-const { createServer } = require("../server");
+const { createServer, localNetworkUrls, normalizeScore, MAX_SCORE_DIGITS } = require("../server");
 
 async function withServer(run) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "neek-leaderboard-"));
@@ -195,5 +195,45 @@ test("lifetime values remain exact beyond JavaScript numeric limits", async () =
     const user = await response.json();
     assert.equal(user.count, huge);
     assert.equal(user.lifetime, huge);
+  });
+});
+
+
+test("local network URLs include only external IPv4 addresses", () => {
+  const interfaces = {
+    lo: [{ family: "IPv4", address: "127.0.0.1", internal: true }],
+    wifi: [{ family: "IPv4", address: "192.168.1.42", internal: false }],
+    docker: [{ family: "IPv4", address: "172.17.0.1", internal: false }],
+    ipv6: [{ family: "IPv6", address: "fe80::1", internal: false }]
+  };
+
+  assert.deepEqual(localNetworkUrls(3000, interfaces), [
+    "http://192.168.1.42:3000",
+    "http://172.17.0.1:3000"
+  ]);
+});
+
+
+test("scores larger than the browser-safe limit are saturated", () => {
+  const oversized = "8".repeat(MAX_SCORE_DIGITS + 1);
+  const normalized = normalizeScore(oversized);
+
+  assert.equal(normalized.length, MAX_SCORE_DIGITS);
+  assert.equal(normalized, "9".repeat(MAX_SCORE_DIGITS));
+});
+
+test("API bounds oversized scores before returning them to clients", async () => {
+  await withServer(async base => {
+    const oversized = "8".repeat(MAX_SCORE_DIGITS + 1);
+    const response = await fetch(`${base}/api/leaderboard/Giant`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...player(0), count: oversized, lifetime: oversized })
+    });
+    const user = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(user.count.length, MAX_SCORE_DIGITS);
+    assert.equal(user.lifetime.length, MAX_SCORE_DIGITS);
   });
 });
