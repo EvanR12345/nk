@@ -43,7 +43,7 @@ test("leaderboard changes are visible to separate clients", async () => {
     const secondDevice = await fetch(`${base}/api/leaderboard`);
     assert.equal(secondDevice.status, 200);
     const board = await secondDevice.json();
-    assert.equal(board.Alice.lifetime, 1234);
+    assert.equal(board.Alice.lifetime, "1234");
     assert.equal(board.Alice.theme, "fire");
   });
 });
@@ -96,12 +96,12 @@ test("scientific notation and the uncapped jjh-only exponent upgrade are normali
       body: JSON.stringify({
         ...player(100000),
         notation: "scientific",
-        upgrades: { ...player(0).upgrades, exponent: 12345 }
+        upgrades: { ...player(0).upgrades, exponent: "900719925474099312345678901234567890" }
       })
     });
     const secretUser = await secretResponse.json();
     assert.equal(secretUser.notation, "scientific");
-    assert.equal(secretUser.upgrades.exponent, 12345);
+    assert.equal(secretUser.upgrades.exponent, "900719925474099312345678901234567890");
 
     const regularResponse = await fetch(`${base}/api/leaderboard/Alice`, {
       method: "PUT",
@@ -114,6 +114,20 @@ test("scientific notation and the uncapped jjh-only exponent upgrade are normali
     });
     const regularUser = await regularResponse.json();
     assert.equal(regularUser.notation, "standard");
-    assert.equal(regularUser.upgrades.exponent, 0);
+    assert.equal(regularUser.upgrades.exponent, "0");
+  });
+});
+
+test("lifetime values remain exact beyond JavaScript numeric limits", async () => {
+  await withServer(async base => {
+    const huge = "99999999999999999999999999999999999999999999999999";
+    const response = await fetch(`${base}/api/leaderboard/jjh`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...player(0), count: huge, lifetime: huge })
+    });
+    const user = await response.json();
+    assert.equal(user.count, huge);
+    assert.equal(user.lifetime, huge);
   });
 });
